@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "oxlint .",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "check": "bun run format && bun run lint"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.3",
@@ -22,8 +25,8 @@
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "^15.1.0",
+    "oxfmt": "^0.23.0",
+    "oxlint": "^1.38.0",
     "postcss": "^8",
     "tailwindcss": "^3.4.17",
     "typescript": "^5"
