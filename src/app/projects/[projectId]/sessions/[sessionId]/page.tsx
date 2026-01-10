@@ -30,7 +30,7 @@ export default function SessionPage({ params }: PageProps) {
   const { projectId, sessionId } = use(params);
 
   // Project and session state
-  const { projects, createProject } = useProjects();
+  const { projects, createProject, updateProject } = useProjects();
   const [agentSessionId, setAgentSessionId] = useState<string | undefined>();
 
   const {
@@ -41,6 +41,8 @@ export default function SessionPage({ params }: PageProps) {
     fetchSessions,
     createSession,
     selectSession,
+    updateSession,
+    updateSessionTitleLocal,
   } = useSessions(projectId);
 
   // Editor state
@@ -66,6 +68,9 @@ export default function SessionPage({ params }: PageProps) {
       setEditorLanguage(exercise.language);
     },
     onSessionId: setAgentSessionId,
+    onTitleGenerated: (title) => {
+      updateSessionTitleLocal(sessionId, title);
+    },
   });
 
   // Fetch sessions for sidebar
@@ -133,6 +138,20 @@ export default function SessionPage({ params }: PageProps) {
     sendMessage("", "hint", editorCode);
   }, [sendMessage, editorCode]);
 
+  const handleRenameProject = useCallback(
+    async (targetProjectId: string, newName: string) => {
+      await updateProject(targetProjectId, { name: newName });
+    },
+    [updateProject]
+  );
+
+  const handleRenameSession = useCallback(
+    async (targetProjectId: string, targetSessionId: string, newTitle: string) => {
+      await updateSession(targetProjectId, targetSessionId, { title: newTitle });
+    },
+    [updateSession]
+  );
+
   return (
     <div className="flex h-screen">
       {/* Sidebar */}
@@ -145,6 +164,8 @@ export default function SessionPage({ params }: PageProps) {
         onSelectSession={handleSelectSession}
         onCreateProject={handleCreateProject}
         onCreateSession={handleCreateSession}
+        onRenameProject={handleRenameProject}
+        onRenameSession={handleRenameSession}
         className="w-64 border-r border-gray-200 dark:border-gray-800"
       />
 
