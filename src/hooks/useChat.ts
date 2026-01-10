@@ -179,7 +179,30 @@ export function useChat({
             timestamp: new Date().toISOString(),
             exercise: detectedExercise || undefined,
           };
-          setMessages((prev) => [...prev, assistantMessage]);
+
+          // Update state and get the new messages array for persistence
+          let updatedMessages: Message[] = [];
+          setMessages((prev) => {
+            updatedMessages = [...prev, assistantMessage];
+            return updatedMessages;
+          });
+
+          // Persist messages and agentSessionId to storage (fire and forget, but with error handling)
+          fetch(`/api/projects/${projectId}/sessions/${sessionId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ messages: updatedMessages, agentSessionId }),
+          })
+            .then((response) => {
+              if (!response.ok) {
+                console.error('Failed to persist messages:', response.status);
+                setError('Failed to save messages');
+              }
+            })
+            .catch((persistError) => {
+              console.error('Failed to persist messages:', persistError);
+              setError('Failed to save messages');
+            });
         }
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") {
