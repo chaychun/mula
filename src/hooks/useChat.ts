@@ -1,19 +1,25 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import type { Message, Exercise } from "@/lib/types";
+import type { Message, Exercise, ToolCall } from "@/lib/types";
 import { generateTitleFromMessage } from "@/lib/utils/generateTitle";
+
+interface ContentBlock {
+  type: string;
+  text?: string;
+  name?: string;
+  id?: string;
+  input?: Record<string, unknown>;
+  tool_use_id?: string;
+  content?: string | Array<{ type: string; text?: string }>;
+  is_error?: boolean;
+}
 
 interface SDKMessage {
   type: string;
   subtype?: string;
   message?: {
-    content: Array<{
-      type: string;
-      text?: string;
-      name?: string;
-      input?: Exercise;
-    }>;
+    content: ContentBlock[];
   };
   result?: string;
   session_id?: string;
@@ -44,17 +50,23 @@ export function useChat({
   const [messages, setMessages] = useState<Message[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
+  const [streamingToolCalls, setStreamingToolCalls] = useState<ToolCall[]>([]);
   const [error, setError] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const titleGeneratedRef = useRef(false);
   const messagesRef = useRef<Message[]>([]);
 
   // Generate a unique message ID
-  const generateMessageId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const generateMessageId = () =>
+    `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
   // Send a message
   const sendMessage = useCallback(
-    async (content: string, action: "message" | "submit" | "hint" = "message", editorCode?: string) => {
+    async (
+      content: string,
+      action: "message" | "submit" | "hint" = "message",
+      editorCode?: string
+    ) => {
       if (!projectId || !sessionId) {
         setError("No project or session selected");
         return;
@@ -74,10 +86,14 @@ export function useChat({
 
       setIsStreaming(true);
       setStreamingContent("");
+      setStreamingToolCalls([]);
       setError(null);
 
       // Create abort controller for this request
       abortControllerRef.current = new AbortController();
+
+      // Track tool calls during streaming
+      const toolCallMap = new Map<string, ToolCall>();
 
       try {
         const response = await fetch("/api/chat", {
@@ -123,7 +139,10 @@ export function useChat({
                 const sdkMessage: SDKMessage = JSON.parse(data);
 
                 // Handle different message types
-                if (sdkMessage.type === "assistant" && sdkMessage.message?.content) {
+                if (
+                  sdkMessage.type === "assistant" &&
+                  sdkMessage.message?.content
+                ) {
                   for (const block of sdkMessage.message.content) {
                     if (block.type === "text" && block.text) {
                       // Check if this is an exercise JSON
@@ -141,23 +160,71 @@ export function useChat({
                       setStreamingContent(accumulatedContent);
                     }
 
-                    // Check for tool use (create_exercise)
-                    if (block.type === "tool_use" && block.name?.includes("create_exercise")) {
-                      if (block.input) {
-                        detectedExercise = block.input;
+                    // Handle tool_use blocks
+                    if (block.type === "tool_use" && block.id && block.name) {
+                      const toolCall: ToolCall = {
+                        id: block.id,
+                        name: block.name,
+                        input: (block.input as Record<string, unknown>) || {},
+                        status: "pending",
+                      };
+                      toolCallMap.set(block.id, toolCall);
+                      setStreamingToolCalls(Array.from(toolCallMap.values()));
+
+                      // Special handling for create_exercise
+                      if (block.name.includes("create_exercise") && block.input) {
+                        detectedExercise = block.input as unknown as Exercise;
                         onExercise?.(detectedExercise);
+                      }
+                    }
+
+                    // Handle tool_result blocks
+                    if (block.type === "tool_result" && block.tool_use_id) {
+                      const existingCall = toolCallMap.get(block.tool_use_id);
+                      if (existingCall) {
+                        // Extract output text
+                        let outputText = "";
+                        if (typeof block.content === "string") {
+                          outputText = block.content;
+                        } else if (Array.isArray(block.content)) {
+                          outputText = block.content
+                            .filter(
+                              (c): c is { type: string; text: string } =>
+                                c.type === "text" && typeof c.text === "string"
+                            )
+                            .map((c) => c.text)
+                            .join("\n");
+                        }
+
+                        existingCall.output = outputText;
+                        existingCall.status = block.is_error
+                          ? "error"
+                          : "completed";
+                        if (block.is_error) {
+                          existingCall.error = outputText;
+                        }
+                        toolCallMap.set(block.tool_use_id, existingCall);
+                        setStreamingToolCalls(Array.from(toolCallMap.values()));
                       }
                     }
                   }
                 }
 
                 // Capture session ID from init message
-                if (sdkMessage.type === "system" && sdkMessage.subtype === "init" && sdkMessage.session_id) {
+                if (
+                  sdkMessage.type === "system" &&
+                  sdkMessage.subtype === "init" &&
+                  sdkMessage.session_id
+                ) {
                   onSessionId?.(sdkMessage.session_id);
                 }
 
                 // Handle result message
-                if (sdkMessage.type === "result" && sdkMessage.subtype === "success" && sdkMessage.result) {
+                if (
+                  sdkMessage.type === "result" &&
+                  sdkMessage.subtype === "success" &&
+                  sdkMessage.result
+                ) {
                   // Final result - append if not already in content
                   if (!accumulatedContent.includes(sdkMessage.result)) {
                     accumulatedContent += sdkMessage.result;
@@ -177,13 +244,15 @@ export function useChat({
         }
 
         // Add the complete assistant message
-        if (accumulatedContent) {
+        const finalToolCalls = Array.from(toolCallMap.values());
+        if (accumulatedContent || finalToolCalls.length > 0) {
           const assistantMessage: Message = {
             id: generateMessageId(),
             role: "assistant",
             content: accumulatedContent,
             timestamp: new Date().toISOString(),
             exercise: detectedExercise || undefined,
+            toolCalls: finalToolCalls.length > 0 ? finalToolCalls : undefined,
           };
 
           // Update ref and state
@@ -193,19 +262,19 @@ export function useChat({
 
           // Persist messages and agentSessionId to storage (fire and forget, but with error handling)
           fetch(`/api/projects/${projectId}/sessions/${sessionId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ messages: updatedMessages, agentSessionId }),
           })
             .then((response) => {
               if (!response.ok) {
-                console.error('Failed to persist messages:', response.status);
-                setError('Failed to save messages');
+                console.error("Failed to persist messages:", response.status);
+                setError("Failed to save messages");
               }
             })
             .catch((persistError) => {
-              console.error('Failed to persist messages:', persistError);
-              setError('Failed to save messages');
+              console.error("Failed to persist messages:", persistError);
+              setError("Failed to save messages");
             });
 
           // Generate title from first user message (fire and forget)
@@ -239,6 +308,7 @@ export function useChat({
       } finally {
         setIsStreaming(false);
         setStreamingContent("");
+        setStreamingToolCalls([]);
         abortControllerRef.current = null;
       }
     },
@@ -258,6 +328,7 @@ export function useChat({
     titleGeneratedRef.current = false;
     setMessages([]);
     setStreamingContent("");
+    setStreamingToolCalls([]);
     setError(null);
   }, []);
 
@@ -275,6 +346,7 @@ export function useChat({
     messages,
     isStreaming,
     streamingContent,
+    streamingToolCalls,
     error,
     sendMessage,
     cancelRequest,

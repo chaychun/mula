@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect } from "react";
-import type { Message, Exercise } from "@/lib/types";
+import type { Message, Exercise, ToolCall } from "@/lib/types";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
 
@@ -10,6 +10,7 @@ interface ChatProps {
   currentExercise: Exercise | null;
   isStreaming: boolean;
   streamingContent: string;
+  streamingToolCalls: ToolCall[];
   onSendMessage: (message: string) => void;
   className?: string;
 }
@@ -19,6 +20,7 @@ export default function Chat({
   currentExercise,
   isStreaming,
   streamingContent,
+  streamingToolCalls,
   onSendMessage,
   className = "",
 }: ChatProps) {
@@ -29,7 +31,7 @@ export default function Chat({
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, streamingContent]);
+  }, [messages, streamingContent, streamingToolCalls]);
 
   return (
     <div className={`flex flex-col ${className}`}>
@@ -40,7 +42,7 @@ export default function Chat({
 
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4">
-        {messages.length === 0 && !streamingContent ? (
+        {messages.length === 0 && !streamingContent && streamingToolCalls.length === 0 ? (
           <div className="h-full flex items-center justify-center">
             <div className="text-center text-gray-500">
               <p className="text-lg mb-2">Ready to learn!</p>
@@ -54,6 +56,7 @@ export default function Chat({
             messages={messages}
             currentExercise={currentExercise}
             streamingContent={streamingContent}
+            streamingToolCalls={streamingToolCalls}
             isStreaming={isStreaming}
           />
         )}

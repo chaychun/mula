@@ -1,6 +1,7 @@
 "use client";
 
 import type { Exercise } from "@/lib/types";
+import { MarkdownContent } from "./MarkdownContent";
 
 interface ExerciseBlockProps {
   exercise: Exercise;
@@ -25,16 +26,18 @@ export default function ExerciseBlock({ exercise }: ExerciseBlockProps) {
           <h4 className="text-xs font-semibold text-gray-500 uppercase mb-1">
             Instructions
           </h4>
-          <p className="text-sm">{exercise.instructions}</p>
+          <div className="text-sm">
+            <MarkdownContent content={exercise.instructions} />
+          </div>
         </div>
 
         <div>
           <h4 className="text-xs font-semibold text-gray-500 uppercase mb-1">
             Expected Behavior
           </h4>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            {exercise.expectedBehavior}
-          </p>
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            <MarkdownContent content={exercise.expectedBehavior} />
+          </div>
         </div>
       </div>
 
