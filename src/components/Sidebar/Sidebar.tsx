@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { Project, Session } from "@/lib/types";
 import ProjectList from "./ProjectList";
 import CreateProjectModal from "./CreateProjectModal";
+import { Button } from "@/components/UI/button";
 
 interface SidebarProps {
   projects: Project[];
@@ -40,9 +41,9 @@ export default function Sidebar({
   };
 
   return (
-    <aside className={`flex flex-col bg-gray-50 dark:bg-gray-900 ${className}`}>
+    <aside className={`flex flex-col bg-muted/50 ${className}`}>
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 dark:border-gray-800">
+      <div className="p-4 border-b">
         <h1 className="text-xl font-bold">Coding Tutor</h1>
       </div>
 
@@ -62,13 +63,10 @@ export default function Sidebar({
       </div>
 
       {/* Create Project */}
-      <div className="p-4 border-t border-gray-200 dark:border-gray-800">
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="w-full px-3 py-2 text-sm border rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 dark:border-gray-700"
-        >
+      <div className="p-4 border-t">
+        <Button variant="outline" className="w-full" onClick={() => setIsModalOpen(true)}>
           + New Project
-        </button>
+        </Button>
       </div>
 
       <CreateProjectModal
