@@ -51,28 +51,21 @@ export default function SessionPage({ params }: PageProps) {
   const [currentExercise, setCurrentExercise] = useState<Exercise | null>(null);
 
   // Chat hook
-  const {
-    messages,
-    isStreaming,
-    streamingContent,
-    streamingToolCalls,
-    sendMessage,
-    loadMessages,
-    clearMessages,
-  } = useChat({
-    projectId,
-    sessionId,
-    agentSessionId,
-    onExercise: (exercise) => {
-      setCurrentExercise(exercise);
-      setEditorCode(exercise.starterCode);
-      setEditorLanguage(exercise.language);
-    },
-    onSessionId: setAgentSessionId,
-    onTitleGenerated: (title) => {
-      updateSessionTitleLocal(sessionId, title);
-    },
-  });
+  const { messages, isStreaming, streamingContent, streamingToolCalls, sendMessage, loadMessages } =
+    useChat({
+      projectId,
+      sessionId,
+      agentSessionId,
+      onExercise: (exercise) => {
+        setCurrentExercise(exercise);
+        setEditorCode(exercise.starterCode);
+        setEditorLanguage(exercise.language);
+      },
+      onSessionId: setAgentSessionId,
+      onTitleGenerated: (title) => {
+        updateSessionTitleLocal(sessionId, title);
+      },
+    });
 
   // Fetch sessions for sidebar
   useEffect(() => {
@@ -95,10 +88,13 @@ export default function SessionPage({ params }: PageProps) {
   }, [currentSession, loadMessages]);
 
   // Navigation handlers
-  const handleSelectProject = useCallback((newProjectId: string) => {
-    // Just expand the project in sidebar - no navigation yet
-    fetchSessions(newProjectId);
-  }, [fetchSessions]);
+  const handleSelectProject = useCallback(
+    (newProjectId: string) => {
+      // Just expand the project in sidebar - no navigation yet
+      fetchSessions(newProjectId);
+    },
+    [fetchSessions]
+  );
 
   const handleSelectSession = useCallback(
     (newProjectId: string, newSessionId: string) => {
@@ -202,11 +198,7 @@ export default function SessionPage({ params }: PageProps) {
               onHint={handleHint}
             />
             <div className="flex-1">
-              <CodeEditor
-                code={editorCode}
-                language={editorLanguage}
-                onChange={setEditorCode}
-              />
+              <CodeEditor code={editorCode} language={editorLanguage} onChange={setEditorCode} />
             </div>
           </div>
 

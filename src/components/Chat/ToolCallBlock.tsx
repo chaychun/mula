@@ -42,9 +42,7 @@ export function ToolCallBlock({ toolCall }: ToolCallBlockProps) {
         className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
       >
         <div className="flex items-center gap-2">
-          <span className="text-gray-400 text-xs">
-            {isExpanded ? "\u25BC" : "\u25B6"}
-          </span>
+          <span className="text-gray-400 text-xs">{isExpanded ? "\u25BC" : "\u25B6"}</span>
           <span className="font-mono text-xs">{displayName}</span>
         </div>
         <span className={`font-mono ${statusColor}`}>{statusIcon}</span>
@@ -53,18 +51,14 @@ export function ToolCallBlock({ toolCall }: ToolCallBlockProps) {
       {isExpanded && (
         <div className="px-3 py-2 bg-gray-50 dark:bg-gray-900 text-xs border-t border-gray-200 dark:border-gray-700">
           <div className="mb-2">
-            <span className="font-semibold text-gray-600 dark:text-gray-400">
-              Input:
-            </span>
+            <span className="font-semibold text-gray-600 dark:text-gray-400">Input:</span>
             <pre className="mt-1 p-2 bg-gray-100 dark:bg-gray-800 rounded overflow-x-auto">
               {JSON.stringify(toolCall.input, null, 2)}
             </pre>
           </div>
           {toolCall.output && (
             <div>
-              <span className="font-semibold text-gray-600 dark:text-gray-400">
-                Output:
-              </span>
+              <span className="font-semibold text-gray-600 dark:text-gray-400">Output:</span>
               <pre className="mt-1 p-2 bg-gray-100 dark:bg-gray-800 rounded overflow-x-auto max-h-40 overflow-y-auto">
                 {showFullOutput || toolCall.output.length <= OUTPUT_PREVIEW_LIMIT
                   ? toolCall.output

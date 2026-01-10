@@ -11,7 +11,11 @@ export const tutorServer = createSdkMcpServer({
       "read_progress",
       "Read the student's progress file for a specific topic within the current project. Use this at the start of a session to understand what the student already knows.",
       {
-        topic: z.string().describe("The topic identifier (e.g., 'swift-optionals', 'python-functions', 'react-hooks')"),
+        topic: z
+          .string()
+          .describe(
+            "The topic identifier (e.g., 'swift-optionals', 'python-functions', 'react-hooks')"
+          ),
         projectId: z.string().describe("The project identifier"),
       },
       async (args) => {
@@ -106,12 +110,18 @@ export const tutorServer = createSdkMcpServer({
         title: z.string().describe("The exercise title (e.g., 'Unwrapping Optionals')"),
         language: z
           .string()
-          .describe("Programming language for syntax highlighting (e.g., 'swift', 'python', 'typescript', 'javascript')"),
-        instructions: z.string().describe("Clear instructions for what the student should implement"),
+          .describe(
+            "Programming language for syntax highlighting (e.g., 'swift', 'python', 'typescript', 'javascript')"
+          ),
+        instructions: z
+          .string()
+          .describe("Clear instructions for what the student should implement"),
         starterCode: z.string().describe("Initial code to populate the editor"),
         expectedBehavior: z
           .string()
-          .describe("Description of what the correct solution should do (e.g., 'safeLength(\"hello\") returns 5')"),
+          .describe(
+            "Description of what the correct solution should do (e.g., 'safeLength(\"hello\") returns 5')"
+          ),
       },
       async (args) => {
         // Return the exercise data as JSON - the UI will handle rendering
@@ -185,7 +195,12 @@ export const tutorServer = createSdkMcpServer({
       },
       async (args) => {
         try {
-          await storage.wrapUpSession(args.projectId, args.sessionId, args.summary, args.topicsUpdated);
+          await storage.wrapUpSession(
+            args.projectId,
+            args.sessionId,
+            args.summary,
+            args.topicsUpdated
+          );
           return {
             content: [
               {

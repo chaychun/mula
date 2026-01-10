@@ -9,11 +9,7 @@ interface CreateProjectModalProps {
   onCreate: (name: string) => void;
 }
 
-export default function CreateProjectModal({
-  isOpen,
-  onClose,
-  onCreate,
-}: CreateProjectModalProps) {
+export default function CreateProjectModal({ isOpen, onClose, onCreate }: CreateProjectModalProps) {
   const [name, setName] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -46,10 +42,7 @@ export default function CreateProjectModal({
     <Modal isOpen={isOpen} onClose={onClose} title="Create New Project">
       <div className="space-y-4">
         <div>
-          <label
-            htmlFor="project-name"
-            className="block text-sm font-medium mb-1"
-          >
+          <label htmlFor="project-name" className="block text-sm font-medium mb-1">
             Project Name
           </label>
           <input

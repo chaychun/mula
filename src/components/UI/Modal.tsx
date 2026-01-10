@@ -51,6 +51,11 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       onClick={handleBackdropClick}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") onClose();
+      }}
+      role="button"
+      tabIndex={0}
     >
       <div
         ref={modalRef}

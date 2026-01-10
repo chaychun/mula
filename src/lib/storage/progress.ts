@@ -94,7 +94,9 @@ function generateProgressSummary(progress: Progress): string {
   const parts: string[] = [];
 
   if (progress.masteredConcepts.length > 0) {
-    parts.push(`Mastered: ${progress.masteredConcepts.slice(0, 3).join(", ")}${progress.masteredConcepts.length > 3 ? "..." : ""}`);
+    parts.push(
+      `Mastered: ${progress.masteredConcepts.slice(0, 3).join(", ")}${progress.masteredConcepts.length > 3 ? "..." : ""}`
+    );
   }
 
   if (progress.needsReinforcement.length > 0) {
@@ -131,5 +133,7 @@ export async function listTopicsWithProgress(projectId: string): Promise<TopicSu
   }
 
   // Sort by lastUpdated descending
-  return topics.sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime());
+  return topics.sort(
+    (a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime()
+  );
 }

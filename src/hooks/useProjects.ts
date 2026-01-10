@@ -52,9 +52,7 @@ export function useProjects() {
       });
       if (!response.ok) throw new Error("Failed to update project");
       const updatedProject = await response.json();
-      setProjects((prev) =>
-        prev.map((p) => (p.id === projectId ? updatedProject : p))
-      );
+      setProjects((prev) => prev.map((p) => (p.id === projectId ? updatedProject : p)));
       return updatedProject;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");

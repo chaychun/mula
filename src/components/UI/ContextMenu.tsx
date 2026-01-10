@@ -16,12 +16,7 @@ interface ContextMenuProps {
   items: ContextMenuItem[];
 }
 
-export default function ContextMenu({
-  isOpen,
-  position,
-  onClose,
-  items,
-}: ContextMenuProps) {
+export default function ContextMenu({ isOpen, position, onClose, items }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
   const handleClickOutside = useCallback(

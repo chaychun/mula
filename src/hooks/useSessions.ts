@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import type { Session } from "@/lib/types";
 
-export function useSessions(projectId: string | null) {
+export function useSessions(_projectId: string | null) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(false);
@@ -63,42 +63,47 @@ export function useSessions(projectId: string | null) {
   }, []);
 
   // Update a session
-  const updateSession = useCallback(async (pid: string, sessionId: string, updates: Partial<Session>) => {
-    try {
-      const response = await fetch(`/api/projects/${pid}/sessions/${sessionId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updates),
-      });
-      if (!response.ok) throw new Error("Failed to update session");
-      const updatedSession = await response.json();
-      setSessions((prev) =>
-        prev.map((s) => (s.id === sessionId ? updatedSession : s))
-      );
-      if (currentSession?.id === sessionId) {
-        setCurrentSession(updatedSession);
+  const updateSession = useCallback(
+    async (pid: string, sessionId: string, updates: Partial<Session>) => {
+      try {
+        const response = await fetch(`/api/projects/${pid}/sessions/${sessionId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updates),
+        });
+        if (!response.ok) throw new Error("Failed to update session");
+        const updatedSession = await response.json();
+        setSessions((prev) => prev.map((s) => (s.id === sessionId ? updatedSession : s)));
+        if (currentSession?.id === sessionId) {
+          setCurrentSession(updatedSession);
+        }
+        return updatedSession;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Unknown error");
+        throw err;
       }
-      return updatedSession;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-      throw err;
-    }
-  }, [currentSession?.id]);
+    },
+    [currentSession?.id]
+  );
 
   // Update session title in local state only (used after async title generation)
-  const updateSessionTitleLocal = useCallback((sessionId: string, title: string) => {
-    setSessions((prev) =>
-      prev.map((s) => (s.id === sessionId ? { ...s, title } : s))
-    );
-    if (currentSession?.id === sessionId) {
-      setCurrentSession((prev) => (prev ? { ...prev, title } : null));
-    }
-  }, [currentSession?.id]);
+  const updateSessionTitleLocal = useCallback(
+    (sessionId: string, title: string) => {
+      setSessions((prev) => prev.map((s) => (s.id === sessionId ? { ...s, title } : s)));
+      if (currentSession?.id === sessionId) {
+        setCurrentSession((prev) => (prev ? { ...prev, title } : null));
+      }
+    },
+    [currentSession?.id]
+  );
 
   // Select a session
-  const selectSession = useCallback(async (pid: string, sessionId: string) => {
-    return fetchSession(pid, sessionId);
-  }, [fetchSession]);
+  const selectSession = useCallback(
+    async (pid: string, sessionId: string) => {
+      return fetchSession(pid, sessionId);
+    },
+    [fetchSession]
+  );
 
   // Clear current session
   const clearSession = useCallback(() => {

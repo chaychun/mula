@@ -11,9 +11,12 @@ export default function Home() {
   const { projects, createProject, updateProject } = useProjects();
   const { sessions, createSession, fetchSessions, updateSession } = useSessions(null);
 
-  const handleSelectProject = useCallback((projectId: string) => {
-    fetchSessions(projectId);
-  }, [fetchSessions]);
+  const handleSelectProject = useCallback(
+    (projectId: string) => {
+      fetchSessions(projectId);
+    },
+    [fetchSessions]
+  );
 
   const handleSelectSession = useCallback(
     (projectId: string, sessionId: string) => {

@@ -46,9 +46,7 @@ export default function Chat({
           <div className="h-full flex items-center justify-center">
             <div className="text-center text-gray-500">
               <p className="text-lg mb-2">Ready to learn!</p>
-              <p className="text-sm">
-                Tell me what you&apos;d like to learn today.
-              </p>
+              <p className="text-sm">Tell me what you&apos;d like to learn today.</p>
             </div>
           </div>
         ) : (
