@@ -1,6 +1,6 @@
 "use client";
 
-import type { Message, Exercise } from "@/lib/types";
+import type { Message, Exercise, ToolCall } from "@/lib/types";
 import ChatMessage from "./Message";
 import ExerciseBlock from "./ExerciseBlock";
 
@@ -8,6 +8,7 @@ interface MessageListProps {
   messages: Message[];
   currentExercise: Exercise | null;
   streamingContent: string;
+  streamingToolCalls: ToolCall[];
   isStreaming: boolean;
 }
 
@@ -15,6 +16,7 @@ export default function MessageList({
   messages,
   currentExercise,
   streamingContent,
+  streamingToolCalls,
   isStreaming,
 }: MessageListProps) {
   return (
@@ -27,20 +29,21 @@ export default function MessageList({
         </div>
       ))}
 
-      {/* Show streaming content */}
-      {streamingContent && (
+      {/* Show streaming content with tool calls */}
+      {(streamingContent || streamingToolCalls.length > 0) && (
         <ChatMessage
           message={{
             id: "streaming",
             role: "assistant",
             content: streamingContent,
             timestamp: new Date().toISOString(),
+            toolCalls: streamingToolCalls.length > 0 ? streamingToolCalls : undefined,
           }}
         />
       )}
 
       {/* Show typing indicator */}
-      {isStreaming && !streamingContent && (
+      {isStreaming && !streamingContent && streamingToolCalls.length === 0 && (
         <div className="flex items-center gap-2 text-gray-500">
           <div className="flex gap-1">
             <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />

@@ -28,6 +28,7 @@ export interface Message {
   content: string;
   timestamp: string;
   exercise?: Exercise; // If this message contains an exercise
+  toolCalls?: ToolCall[]; // Tool calls made during this message
 }
 
 export interface ExerciseRecord {
@@ -46,6 +47,16 @@ export interface Exercise {
   instructions: string;
   starterCode: string;
   expectedBehavior: string;
+}
+
+// Tool call types
+export interface ToolCall {
+  id: string;
+  name: string;
+  input: Record<string, unknown>;
+  output?: string;
+  status: "pending" | "completed" | "error";
+  error?: string;
 }
 
 // Progress types

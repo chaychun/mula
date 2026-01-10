@@ -28,3 +28,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# npm (using bun)
+package-lock.json
+
+# claude code cache
+.claude/cache
+.claude/tsc-cache
