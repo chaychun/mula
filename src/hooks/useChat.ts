@@ -57,8 +57,7 @@ export function useChat({
   const messagesRef = useRef<Message[]>([]);
 
   // Generate a unique message ID
-  const generateMessageId = () =>
-    `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const generateMessageId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
   // Send a message
   const sendMessage = useCallback(
@@ -139,10 +138,7 @@ export function useChat({
                 const sdkMessage: SDKMessage = JSON.parse(data);
 
                 // Handle different message types
-                if (
-                  sdkMessage.type === "assistant" &&
-                  sdkMessage.message?.content
-                ) {
+                if (sdkMessage.type === "assistant" && sdkMessage.message?.content) {
                   for (const block of sdkMessage.message.content) {
                     if (block.type === "text" && block.text) {
                       // Check if this is an exercise JSON
@@ -197,9 +193,7 @@ export function useChat({
                         }
 
                         existingCall.output = outputText;
-                        existingCall.status = block.is_error
-                          ? "error"
-                          : "completed";
+                        existingCall.status = block.is_error ? "error" : "completed";
                         if (block.is_error) {
                           existingCall.error = outputText;
                         }
@@ -284,8 +278,8 @@ export function useChat({
             if (firstUserMessage) {
               const generatedTitle = generateTitleFromMessage(firstUserMessage.content);
               fetch(`/api/projects/${projectId}/sessions/${sessionId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ title: generatedTitle }),
               })
                 .then((response) => {
@@ -294,7 +288,7 @@ export function useChat({
                   }
                 })
                 .catch((err) => {
-                  console.error('Failed to update session title:', err);
+                  console.error("Failed to update session title:", err);
                 });
             }
           }

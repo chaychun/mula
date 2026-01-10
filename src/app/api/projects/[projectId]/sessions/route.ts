@@ -13,10 +13,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     return NextResponse.json(sessions);
   } catch (error) {
     console.error("Error listing sessions:", error);
-    return NextResponse.json(
-      { error: "Failed to list sessions" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to list sessions" }, { status: 500 });
   }
 }
 
@@ -31,9 +28,6 @@ export async function POST(request: Request, { params }: RouteParams) {
     return NextResponse.json(session, { status: 201 });
   } catch (error) {
     console.error("Error creating session:", error);
-    return NextResponse.json(
-      { error: "Failed to create session" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to create session" }, { status: 500 });
   }
 }

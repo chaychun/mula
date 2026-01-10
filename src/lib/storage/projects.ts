@@ -1,6 +1,13 @@
 import * as path from "path";
 import type { Project } from "../types";
-import { getDataPath, readJsonFile, writeJsonFile, listFiles, generateId, ensureDir } from "./utils";
+import {
+  getDataPath,
+  readJsonFile,
+  writeJsonFile,
+  listFiles,
+  generateId,
+  ensureDir,
+} from "./utils";
 
 // Get project directory path
 function getProjectDir(projectId: string): string {
@@ -40,7 +47,10 @@ export async function getProject(projectId: string): Promise<Project | null> {
 }
 
 // Update a project
-export async function updateProject(projectId: string, updates: Partial<Omit<Project, "id" | "createdAt">>): Promise<Project | null> {
+export async function updateProject(
+  projectId: string,
+  updates: Partial<Omit<Project, "id" | "createdAt">>
+): Promise<Project | null> {
   const project = await getProject(projectId);
   if (!project) return null;
 

@@ -63,12 +63,7 @@ export default function ProjectList({
   };
 
   const handleContextMenu = useCallback(
-    (
-      e: React.MouseEvent,
-      type: "project" | "session",
-      id: string,
-      projectId?: string
-    ) => {
+    (e: React.MouseEvent, type: "project" | "session", id: string, projectId?: string) => {
       e.preventDefault();
       e.stopPropagation();
       setContextMenu({
@@ -130,8 +125,7 @@ export default function ProjectList({
         const isExpanded = expandedProjects.has(project.id);
         const isSelected = project.id === currentProjectId;
         const projectSessions = getProjectSessions(project.id);
-        const isEditingProject =
-          editingItem?.type === "project" && editingItem.id === project.id;
+        const isEditingProject = editingItem?.type === "project" && editingItem.id === project.id;
 
         return (
           <div key={project.id}>
@@ -143,9 +137,7 @@ export default function ProjectList({
                     ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
                     : "hover:bg-gray-100 dark:hover:bg-gray-800"
                 }`}
-                onContextMenu={(e) =>
-                  handleContextMenu(e, "project", project.id)
-                }
+                onContextMenu={(e) => handleContextMenu(e, "project", project.id)}
               >
                 <span className="text-xs">{isExpanded ? "▼" : "▶"}</span>
                 <InlineEdit
@@ -155,16 +147,12 @@ export default function ProjectList({
                   onCancel={handleCancelRename}
                   className="font-medium"
                 />
-                <span className="text-xs text-gray-400">
-                  {projectSessions.length}
-                </span>
+                <span className="text-xs text-gray-400">{projectSessions.length}</span>
               </div>
             ) : (
               <button
                 onClick={() => toggleProject(project.id)}
-                onContextMenu={(e) =>
-                  handleContextMenu(e, "project", project.id)
-                }
+                onContextMenu={(e) => handleContextMenu(e, "project", project.id)}
                 className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left text-sm transition-colors ${
                   isSelected
                     ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
@@ -172,12 +160,8 @@ export default function ProjectList({
                 }`}
               >
                 <span className="text-xs">{isExpanded ? "▼" : "▶"}</span>
-                <span className="font-medium truncate flex-1">
-                  {project.name}
-                </span>
-                <span className="text-xs text-gray-400">
-                  {projectSessions.length}
-                </span>
+                <span className="font-medium truncate flex-1">{project.name}</span>
+                <span className="text-xs text-gray-400">{projectSessions.length}</span>
               </button>
             )}
 
@@ -185,15 +169,12 @@ export default function ProjectList({
             {isExpanded && (
               <div className="ml-4 mt-1 space-y-1">
                 {projectSessions.length === 0 ? (
-                  <div className="px-3 py-2 text-xs text-gray-400">
-                    No sessions yet
-                  </div>
+                  <div className="px-3 py-2 text-xs text-gray-400">No sessions yet</div>
                 ) : (
                   projectSessions.map((session) => {
                     const isSessionSelected = session.id === currentSessionId;
                     const isEditingSession =
-                      editingItem?.type === "session" &&
-                      editingItem.id === session.id;
+                      editingItem?.type === "session" && editingItem.id === session.id;
 
                     return isEditingSession ? (
                       <div
@@ -204,12 +185,7 @@ export default function ProjectList({
                             : "hover:bg-gray-100 dark:hover:bg-gray-800"
                         }`}
                         onContextMenu={(e) =>
-                          handleContextMenu(
-                            e,
-                            "session",
-                            session.id,
-                            project.id
-                          )
+                          handleContextMenu(e, "session", session.id, project.id)
                         }
                       >
                         <span
@@ -231,12 +207,7 @@ export default function ProjectList({
                         key={session.id}
                         onClick={() => onSelectSession(project.id, session.id)}
                         onContextMenu={(e) =>
-                          handleContextMenu(
-                            e,
-                            "session",
-                            session.id,
-                            project.id
-                          )
+                          handleContextMenu(e, "session", session.id, project.id)
                         }
                         className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-left text-sm transition-colors ${
                           isSessionSelected
