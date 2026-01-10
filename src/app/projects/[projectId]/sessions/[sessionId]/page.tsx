@@ -53,6 +53,7 @@ export default function SessionPage({ params }: PageProps) {
     messages,
     isStreaming,
     streamingContent,
+    streamingToolCalls,
     sendMessage,
     loadMessages,
     clearMessages,
@@ -194,6 +195,7 @@ export default function SessionPage({ params }: PageProps) {
             currentExercise={currentExercise}
             isStreaming={isStreaming}
             streamingContent={streamingContent}
+            streamingToolCalls={streamingToolCalls}
             onSendMessage={handleSendMessage}
             className="w-1/2"
           />
