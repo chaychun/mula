@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import type { ToolCall } from "@/lib/types";
+import { Button } from "@/components/UI/button";
 
 interface ToolCallBlockProps {
   toolCall: ToolCall;
@@ -36,46 +37,48 @@ export function ToolCallBlock({ toolCall }: ToolCallBlockProps) {
   const displayName = toolCall.name.replace(/^mcp__[^_]+__/, "");
 
   return (
-    <div className="my-2 border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden text-sm">
+    <div className="my-2 border rounded-lg overflow-hidden text-sm">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        className="w-full flex items-center justify-between px-3 py-2 bg-muted/50 hover:bg-muted transition-colors"
       >
         <div className="flex items-center gap-2">
-          <span className="text-gray-400 text-xs">{isExpanded ? "\u25BC" : "\u25B6"}</span>
+          <span className="text-muted-foreground text-xs">{isExpanded ? "\u25BC" : "\u25B6"}</span>
           <span className="font-mono text-xs">{displayName}</span>
         </div>
         <span className={`font-mono ${statusColor}`}>{statusIcon}</span>
       </button>
 
       {isExpanded && (
-        <div className="px-3 py-2 bg-gray-50 dark:bg-gray-900 text-xs border-t border-gray-200 dark:border-gray-700">
+        <div className="px-3 py-2 bg-muted/30 text-xs border-t">
           <div className="mb-2">
-            <span className="font-semibold text-gray-600 dark:text-gray-400">Input:</span>
-            <pre className="mt-1 p-2 bg-gray-100 dark:bg-gray-800 rounded overflow-x-auto">
+            <span className="font-semibold text-muted-foreground">Input:</span>
+            <pre className="mt-1 p-2 bg-muted rounded overflow-x-auto">
               {JSON.stringify(toolCall.input, null, 2)}
             </pre>
           </div>
           {toolCall.output && (
             <div>
-              <span className="font-semibold text-gray-600 dark:text-gray-400">Output:</span>
-              <pre className="mt-1 p-2 bg-gray-100 dark:bg-gray-800 rounded overflow-x-auto max-h-40 overflow-y-auto">
+              <span className="font-semibold text-muted-foreground">Output:</span>
+              <pre className="mt-1 p-2 bg-muted rounded overflow-x-auto max-h-40 overflow-y-auto">
                 {showFullOutput || toolCall.output.length <= OUTPUT_PREVIEW_LIMIT
                   ? toolCall.output
                   : toolCall.output.slice(0, OUTPUT_PREVIEW_LIMIT) + "..."}
               </pre>
               {toolCall.output.length > OUTPUT_PREVIEW_LIMIT && (
-                <button
+                <Button
+                  variant="link"
+                  size="sm"
                   onClick={() => setShowFullOutput(!showFullOutput)}
-                  className="mt-1 text-blue-500 hover:underline text-xs"
+                  className="mt-1 h-auto p-0 text-xs"
                 >
                   {showFullOutput ? "Show less" : "Show full output"}
-                </button>
+                </Button>
               )}
             </div>
           )}
           {toolCall.error && (
-            <div className="text-red-500 mt-2">
+            <div className="text-destructive mt-2">
               <span className="font-semibold">Error:</span> {toolCall.error}
             </div>
           )}

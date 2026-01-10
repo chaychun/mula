@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Modal } from "@/components/UI";
+import { Button } from "@/components/UI/button";
+import { Input } from "@/components/UI/input";
+import { Label } from "@/components/UI/label";
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -41,11 +44,9 @@ export default function CreateProjectModal({ isOpen, onClose, onCreate }: Create
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Create New Project">
       <div className="space-y-4">
-        <div>
-          <label htmlFor="project-name" className="block text-sm font-medium mb-1">
-            Project Name
-          </label>
-          <input
+        <div className="space-y-2">
+          <Label htmlFor="project-name">Project Name</Label>
+          <Input
             ref={inputRef}
             id="project-name"
             type="text"
@@ -53,23 +54,15 @@ export default function CreateProjectModal({ isOpen, onClose, onCreate }: Create
             onChange={(e) => setName(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="My Project"
-            className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
         <div className="flex justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 dark:border-gray-600"
-          >
+          <Button variant="outline" onClick={onClose}>
             Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={!name.trim()}
-            className="px-4 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          </Button>
+          <Button onClick={handleSubmit} disabled={!name.trim()}>
             Create
-          </button>
+          </Button>
         </div>
       </div>
     </Modal>
