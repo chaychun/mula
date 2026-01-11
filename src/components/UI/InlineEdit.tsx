@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { cn } from "@/lib/utils";
 
 interface InlineEditProps {
   value: string;
@@ -11,7 +12,7 @@ interface InlineEditProps {
   className?: string;
 }
 
-export default function InlineEdit({
+export function InlineEdit({
   value,
   onSave,
   onCancel,
@@ -68,7 +69,7 @@ export default function InlineEdit({
   }, [editValue, value, onSave, onCancel]);
 
   if (!isEditing) {
-    return <span className={`truncate flex-1 ${className}`}>{value}</span>;
+    return <span className={cn("truncate flex-1", className)}>{value}</span>;
   }
 
   return (
@@ -80,7 +81,10 @@ export default function InlineEdit({
       onKeyDown={handleKeyDown}
       onBlur={handleBlur}
       placeholder={placeholder}
-      className={`flex-1 px-1 py-0 text-sm border rounded bg-white dark:bg-gray-800 border-blue-500 outline-none ${className}`}
+      className={cn(
+        "flex-1 px-1 py-0 text-xs border rounded-none bg-background border-primary outline-none",
+        className
+      )}
     />
   );
 }

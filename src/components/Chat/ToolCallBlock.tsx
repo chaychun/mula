@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import type { ToolCall } from "@/lib/types";
-import { Button } from "@/components/UI/button";
+import { Button, Spinner, ScrollArea } from "@/components/ui";
+import { CaretDown, CaretRight, Check, X } from "@phosphor-icons/react";
 
 interface ToolCallBlockProps {
   toolCall: ToolCall;
@@ -21,65 +22,82 @@ export function ToolCallBlock({ toolCall }: ToolCallBlockProps) {
     }
   }, [toolCall.status]);
 
-  const statusIcon = {
-    pending: "...",
-    completed: "\u2713",
-    error: "\u2717",
-  }[toolCall.status];
-
-  const statusColor = {
-    pending: "text-yellow-500",
-    completed: "text-green-500",
-    error: "text-red-500",
-  }[toolCall.status];
-
   // Format tool name for display (remove mcp__ prefix)
   const displayName = toolCall.name.replace(/^mcp__[^_]+__/, "");
 
+  const renderStatusIcon = () => {
+    if (toolCall.status === "pending") {
+      return <Spinner size={14} />;
+    }
+    if (toolCall.status === "completed") {
+      return <Check size={14} weight="bold" className="text-primary" />;
+    }
+    return <X size={14} weight="bold" className="text-destructive" />;
+  };
+
   return (
-    <div className="my-2 border rounded-lg overflow-hidden text-sm">
+    <div className="ring-1 ring-border overflow-hidden bg-card">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between px-3 py-2 bg-muted/50 hover:bg-muted transition-colors"
+        className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-muted/50 transition-colors text-left"
       >
-        <div className="flex items-center gap-2">
-          <span className="text-muted-foreground text-xs">{isExpanded ? "\u25BC" : "\u25B6"}</span>
-          <span className="font-mono text-xs">{displayName}</span>
-        </div>
-        <span className={`font-mono ${statusColor}`}>{statusIcon}</span>
+        <span className="text-muted-foreground">
+          {isExpanded ? <CaretDown size={12} /> : <CaretRight size={12} />}
+        </span>
+        <span className="font-mono text-xs flex-1 truncate">{displayName}</span>
+        {renderStatusIcon()}
       </button>
 
       {isExpanded && (
-        <div className="px-3 py-2 bg-muted/30 text-xs border-t">
-          <div className="mb-2">
-            <span className="font-semibold text-muted-foreground">Input:</span>
-            <pre className="mt-1 p-2 bg-muted rounded overflow-x-auto">
-              {JSON.stringify(toolCall.input, null, 2)}
-            </pre>
-          </div>
-          {toolCall.output && (
-            <div>
-              <span className="font-semibold text-muted-foreground">Output:</span>
-              <pre className="mt-1 p-2 bg-muted rounded overflow-x-auto max-h-40 overflow-y-auto">
-                {showFullOutput || toolCall.output.length <= OUTPUT_PREVIEW_LIMIT
-                  ? toolCall.output
-                  : toolCall.output.slice(0, OUTPUT_PREVIEW_LIMIT) + "..."}
+        <div className="border-t border-border">
+          {/* Input Section */}
+          <div className="px-3 py-2.5">
+            <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-2">
+              Input
+            </div>
+            <ScrollArea orientation="horizontal" className="bg-muted/50">
+              <pre className="p-3 text-xs font-mono whitespace-pre-wrap break-all">
+                {JSON.stringify(toolCall.input, null, 2)}
               </pre>
+            </ScrollArea>
+          </div>
+
+          {/* Output Section */}
+          {toolCall.output && (
+            <div className="px-3 py-2.5 border-t border-border">
+              <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-2">
+                Output
+              </div>
+              <ScrollArea orientation="both" className="max-h-48 bg-muted/50">
+                <pre className="p-3 text-xs font-mono whitespace-pre-wrap break-all">
+                  {showFullOutput || toolCall.output.length <= OUTPUT_PREVIEW_LIMIT
+                    ? toolCall.output
+                    : toolCall.output.slice(0, OUTPUT_PREVIEW_LIMIT) + "..."}
+                </pre>
+              </ScrollArea>
               {toolCall.output.length > OUTPUT_PREVIEW_LIMIT && (
                 <Button
                   variant="link"
-                  size="sm"
-                  onClick={() => setShowFullOutput(!showFullOutput)}
-                  className="mt-1 h-auto p-0 text-xs"
+                  size="xs"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowFullOutput(!showFullOutput);
+                  }}
+                  className="mt-2 h-auto p-0 text-[10px]"
                 >
                   {showFullOutput ? "Show less" : "Show full output"}
                 </Button>
               )}
             </div>
           )}
+
+          {/* Error Section */}
           {toolCall.error && (
-            <div className="text-destructive mt-2">
-              <span className="font-semibold">Error:</span> {toolCall.error}
+            <div className="px-3 py-2.5 border-t border-border bg-destructive/5">
+              <div className="text-[10px] font-medium uppercase tracking-wider text-destructive mb-2">
+                Error
+              </div>
+              <p className="text-xs text-destructive">{toolCall.error}</p>
             </div>
           )}
         </div>

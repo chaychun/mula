@@ -22,13 +22,19 @@ export interface Session {
   wrapUpSummary?: string;
 }
 
+// Content block types for interleaved text and tool calls
+export type ContentBlock =
+  | { type: "text"; text: string }
+  | { type: "tool_call"; toolCall: ToolCall };
+
 export interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: string;
   exercise?: Exercise; // If this message contains an exercise
-  toolCalls?: ToolCall[]; // Tool calls made during this message
+  toolCalls?: ToolCall[]; // Tool calls made during this message (legacy)
+  contentBlocks?: ContentBlock[]; // Interleaved content blocks (new)
 }
 
 export interface ExerciseRecord {

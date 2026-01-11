@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import type { Message, Exercise, ToolCall } from "@/lib/types";
+import type { Message, Exercise, ToolCall, ContentBlock } from "@/lib/types";
 import { generateTitleFromMessage } from "@/lib/utils/generateTitle";
 
-interface ContentBlock {
+interface SDKContentBlock {
   type: string;
   text?: string;
   name?: string;
@@ -19,7 +19,7 @@ interface SDKMessage {
   type: string;
   subtype?: string;
   message?: {
-    content: ContentBlock[];
+    content: SDKContentBlock[];
   };
   result?: string;
   session_id?: string;
@@ -51,6 +51,7 @@ export function useChat({
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
   const [streamingToolCalls, setStreamingToolCalls] = useState<ToolCall[]>([]);
+  const [streamingContentBlocks, setStreamingContentBlocks] = useState<ContentBlock[]>([]);
   const [error, setError] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const titleGeneratedRef = useRef(false);
@@ -86,6 +87,7 @@ export function useChat({
       setIsStreaming(true);
       setStreamingContent("");
       setStreamingToolCalls([]);
+      setStreamingContentBlocks([]);
       setError(null);
 
       // Create abort controller for this request
@@ -93,6 +95,9 @@ export function useChat({
 
       // Track tool calls during streaming
       const toolCallMap = new Map<string, ToolCall>();
+      // Track content blocks in order
+      const contentBlocksList: ContentBlock[] = [];
+      let currentTextBlock: { type: "text"; text: string } | null = null;
 
       try {
         const response = await fetch("/api/chat", {
@@ -137,6 +142,62 @@ export function useChat({
               try {
                 const sdkMessage: SDKMessage = JSON.parse(data);
 
+                // Helper function to update content blocks state
+                const updateContentBlocks = () => {
+                  // Build blocks list including current text block
+                  const blocks = [...contentBlocksList];
+                  if (currentTextBlock && currentTextBlock.text) {
+                    // Check if the last block is text - if so, update it
+                    const lastBlock = blocks[blocks.length - 1];
+                    if (lastBlock && lastBlock.type === "text") {
+                      blocks[blocks.length - 1] = currentTextBlock;
+                    } else {
+                      blocks.push(currentTextBlock);
+                    }
+                  }
+                  setStreamingContentBlocks(blocks);
+                };
+
+                // Helper function to process tool_result blocks
+                const processToolResult = (block: SDKContentBlock) => {
+                  if (block.type === "tool_result" && block.tool_use_id) {
+                    const existingCall = toolCallMap.get(block.tool_use_id);
+                    if (existingCall) {
+                      // Extract output text
+                      let outputText = "";
+                      if (typeof block.content === "string") {
+                        outputText = block.content;
+                      } else if (Array.isArray(block.content)) {
+                        outputText = block.content
+                          .filter(
+                            (c): c is { type: string; text: string } =>
+                              c.type === "text" && typeof c.text === "string"
+                          )
+                          .map((c) => c.text)
+                          .join("\n");
+                      }
+
+                      existingCall.output = outputText;
+                      existingCall.status = block.is_error ? "error" : "completed";
+                      if (block.is_error) {
+                        existingCall.error = outputText;
+                      }
+                      toolCallMap.set(block.tool_use_id, existingCall);
+                      setStreamingToolCalls(Array.from(toolCallMap.values()));
+
+                      // Update the tool call in content blocks
+                      for (let i = 0; i < contentBlocksList.length; i++) {
+                        const cb = contentBlocksList[i];
+                        if (cb.type === "tool_call" && cb.toolCall.id === block.tool_use_id) {
+                          contentBlocksList[i] = { type: "tool_call", toolCall: existingCall };
+                          break;
+                        }
+                      }
+                      updateContentBlocks();
+                    }
+                  }
+                };
+
                 // Handle different message types
                 if (sdkMessage.type === "assistant" && sdkMessage.message?.content) {
                   for (const block of sdkMessage.message.content) {
@@ -154,10 +215,24 @@ export function useChat({
                       }
                       accumulatedContent += block.text;
                       setStreamingContent(accumulatedContent);
+
+                      // Add to content blocks
+                      if (!currentTextBlock) {
+                        currentTextBlock = { type: "text", text: block.text };
+                      } else {
+                        currentTextBlock.text += block.text;
+                      }
+                      updateContentBlocks();
                     }
 
                     // Handle tool_use blocks
                     if (block.type === "tool_use" && block.id && block.name) {
+                      // Finalize current text block before adding tool call
+                      if (currentTextBlock && currentTextBlock.text) {
+                        contentBlocksList.push(currentTextBlock);
+                        currentTextBlock = null;
+                      }
+
                       const toolCall: ToolCall = {
                         id: block.id,
                         name: block.name,
@@ -167,6 +242,10 @@ export function useChat({
                       toolCallMap.set(block.id, toolCall);
                       setStreamingToolCalls(Array.from(toolCallMap.values()));
 
+                      // Add tool call to content blocks
+                      contentBlocksList.push({ type: "tool_call", toolCall });
+                      updateContentBlocks();
+
                       // Special handling for create_exercise
                       if (block.name.includes("create_exercise") && block.input) {
                         detectedExercise = block.input as unknown as Exercise;
@@ -174,33 +253,30 @@ export function useChat({
                       }
                     }
 
-                    // Handle tool_result blocks
-                    if (block.type === "tool_result" && block.tool_use_id) {
-                      const existingCall = toolCallMap.get(block.tool_use_id);
-                      if (existingCall) {
-                        // Extract output text
-                        let outputText = "";
-                        if (typeof block.content === "string") {
-                          outputText = block.content;
-                        } else if (Array.isArray(block.content)) {
-                          outputText = block.content
-                            .filter(
-                              (c): c is { type: string; text: string } =>
-                                c.type === "text" && typeof c.text === "string"
-                            )
-                            .map((c) => c.text)
-                            .join("\n");
-                        }
+                    // Handle tool_result blocks in assistant messages
+                    processToolResult(block);
+                  }
+                }
 
-                        existingCall.output = outputText;
-                        existingCall.status = block.is_error ? "error" : "completed";
-                        if (block.is_error) {
-                          existingCall.error = outputText;
-                        }
-                        toolCallMap.set(block.tool_use_id, existingCall);
-                        setStreamingToolCalls(Array.from(toolCallMap.values()));
-                      }
-                    }
+                // Handle user messages (which contain tool_result blocks)
+                if (sdkMessage.type === "user" && sdkMessage.message?.content) {
+                  for (const block of sdkMessage.message.content) {
+                    processToolResult(block);
+                  }
+                }
+
+                // Also check for tool_result at top level (some SDK versions might send this way)
+                if (
+                  (sdkMessage as unknown as SDKContentBlock).type === "tool_result" &&
+                  (sdkMessage as unknown as SDKContentBlock).tool_use_id
+                ) {
+                  processToolResult(sdkMessage as unknown as SDKContentBlock);
+                }
+
+                // Handle any message with content array (catch-all for tool results)
+                if (sdkMessage.message?.content && sdkMessage.type !== "assistant") {
+                  for (const block of sdkMessage.message.content) {
+                    processToolResult(block);
                   }
                 }
 
@@ -239,6 +315,12 @@ export function useChat({
 
         // Add the complete assistant message
         const finalToolCalls = Array.from(toolCallMap.values());
+
+        // Finalize content blocks - add any remaining text block
+        if (currentTextBlock && currentTextBlock.text) {
+          contentBlocksList.push(currentTextBlock);
+        }
+
         if (accumulatedContent || finalToolCalls.length > 0) {
           const assistantMessage: Message = {
             id: generateMessageId(),
@@ -247,6 +329,7 @@ export function useChat({
             timestamp: new Date().toISOString(),
             exercise: detectedExercise || undefined,
             toolCalls: finalToolCalls.length > 0 ? finalToolCalls : undefined,
+            contentBlocks: contentBlocksList.length > 0 ? contentBlocksList : undefined,
           };
 
           // Update ref and state
@@ -303,6 +386,7 @@ export function useChat({
         setIsStreaming(false);
         setStreamingContent("");
         setStreamingToolCalls([]);
+        setStreamingContentBlocks([]);
         abortControllerRef.current = null;
       }
     },
@@ -323,13 +407,53 @@ export function useChat({
     setMessages([]);
     setStreamingContent("");
     setStreamingToolCalls([]);
+    setStreamingContentBlocks([]);
     setError(null);
   }, []);
 
   // Load messages from session
   const loadMessages = useCallback((sessionMessages: Message[]) => {
-    messagesRef.current = sessionMessages;
-    setMessages(sessionMessages);
+    // Normalize tool call statuses - historical tool calls that are still "pending"
+    // should be treated as completed since they're part of persisted messages
+    const normalizedMessages = sessionMessages.map((message) => {
+      let normalizedToolCalls = message.toolCalls;
+      let normalizedContentBlocks = message.contentBlocks;
+
+      if (message.toolCalls && message.toolCalls.length > 0) {
+        normalizedToolCalls = message.toolCalls.map((tc) => ({
+          ...tc,
+          status: tc.status === "pending" ? "completed" : tc.status,
+        })) as typeof message.toolCalls;
+      }
+
+      // Also normalize tool calls within content blocks
+      if (message.contentBlocks && message.contentBlocks.length > 0) {
+        normalizedContentBlocks = message.contentBlocks.map((block) => {
+          if (block.type === "tool_call" && block.toolCall.status === "pending") {
+            return {
+              ...block,
+              toolCall: { ...block.toolCall, status: "completed" as const },
+            };
+          }
+          return block;
+        });
+      }
+
+      if (
+        normalizedToolCalls !== message.toolCalls ||
+        normalizedContentBlocks !== message.contentBlocks
+      ) {
+        return {
+          ...message,
+          toolCalls: normalizedToolCalls,
+          contentBlocks: normalizedContentBlocks,
+        };
+      }
+      return message;
+    });
+
+    messagesRef.current = normalizedMessages;
+    setMessages(normalizedMessages);
     // If session has messages, title was already generated
     if (sessionMessages.length > 0) {
       titleGeneratedRef.current = true;
@@ -341,6 +465,7 @@ export function useChat({
     isStreaming,
     streamingContent,
     streamingToolCalls,
+    streamingContentBlocks,
     error,
     sendMessage,
     cancelRequest,

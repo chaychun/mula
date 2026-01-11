@@ -3,6 +3,7 @@
 import { useRef, useEffect } from "react";
 import Editor, { OnMount } from "@monaco-editor/react";
 import type * as Monaco from "monaco-editor";
+import { useTheme } from "@/components/theme-provider";
 
 // Map language names to Monaco language identifiers
 const languageMap: Record<string, string> = {
@@ -45,6 +46,7 @@ export default function CodeEditor({
   className = "",
 }: CodeEditorProps) {
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
+  const { resolvedTheme } = useTheme();
 
   const handleEditorMount: OnMount = (editor) => {
     editorRef.current = editor;
@@ -70,7 +72,7 @@ export default function CodeEditor({
         value={code}
         onChange={(value) => onChange(value || "")}
         onMount={handleEditorMount}
-        theme="vs-dark"
+        theme={resolvedTheme === "dark" ? "vs-dark" : "vs-light"}
         options={{
           minimap: { enabled: false },
           fontSize: 14,

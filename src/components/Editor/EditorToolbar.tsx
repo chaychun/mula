@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+
 interface EditorToolbarProps {
   language: string;
   hasExercise: boolean;
@@ -16,32 +18,22 @@ export default function EditorToolbar({
   onHint,
 }: EditorToolbarProps) {
   return (
-    <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
+    <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/50">
       {/* Language Badge */}
       <div className="flex items-center gap-2">
-        <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Language:</span>
-        <span className="px-2 py-1 text-xs font-medium bg-gray-200 dark:bg-gray-700 rounded">
-          {language || "plaintext"}
-        </span>
+        <span className="text-sm font-medium text-muted-foreground">Language:</span>
+        <span className="px-2 py-1 text-xs font-medium bg-muted">{language || "plaintext"}</span>
       </div>
 
       {/* Actions */}
       {hasExercise && (
         <div className="flex gap-2">
-          <button
-            onClick={onHint}
-            disabled={isSubmitting}
-            className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            💡 Hint
-          </button>
-          <button
-            onClick={onSubmit}
-            disabled={isSubmitting}
-            className="px-4 py-1.5 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          <Button variant="outline" size="sm" onClick={onHint} disabled={isSubmitting}>
+            Hint
+          </Button>
+          <Button size="sm" onClick={onSubmit} disabled={isSubmitting}>
             {isSubmitting ? "Evaluating..." : "Submit"}
-          </button>
+          </Button>
         </div>
       )}
     </div>

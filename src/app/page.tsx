@@ -2,9 +2,11 @@
 
 import { useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Sidebar from "@/components/Sidebar/Sidebar";
+import AppSidebar from "@/components/Sidebar/AppSidebar";
+import { SidebarInset } from "@/components/ui/sidebar";
 import { useProjects } from "@/hooks/useProjects";
 import { useSessions } from "@/hooks/useSessions";
+import { Button } from "@/components/ui/button";
 
 export default function Home() {
   const router = useRouter();
@@ -57,9 +59,9 @@ export default function Home() {
   );
 
   return (
-    <div className="flex h-screen">
+    <>
       {/* Sidebar */}
-      <Sidebar
+      <AppSidebar
         projects={projects}
         sessions={sessions}
         currentProjectId={null}
@@ -71,24 +73,20 @@ export default function Home() {
         onCreateSession={handleCreateSession}
         onRenameProject={handleRenameProject}
         onRenameSession={handleRenameSession}
-        className="w-64 border-r border-gray-200 dark:border-gray-800"
       />
 
       {/* Welcome Screen */}
-      <main className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-950">
+      <SidebarInset className="flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-4">Welcome to Coding Tutor</h2>
-          <p className="text-gray-500 mb-6">
+          <p className="text-muted-foreground mb-6">
             Create a project or select an existing one to start learning.
           </p>
-          <button
-            onClick={() => handleCreateProject("My First Project")}
-            className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-          >
+          <Button size="lg" onClick={() => handleCreateProject("My First Project")}>
             Create Your First Project
-          </button>
+          </Button>
         </div>
-      </main>
-    </div>
+      </SidebarInset>
+    </>
   );
 }
