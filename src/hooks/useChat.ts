@@ -99,6 +99,62 @@ export function useChat({
       const contentBlocksList: ContentBlock[] = [];
       let currentTextBlock: { type: "text"; text: string } | null = null;
 
+      // Helper function to update content blocks state
+      const updateContentBlocks = () => {
+        // Build blocks list including current text block
+        const blocks = [...contentBlocksList];
+        if (currentTextBlock && currentTextBlock.text) {
+          // Check if the last block is text - if so, update it
+          const lastBlock = blocks[blocks.length - 1];
+          if (lastBlock && lastBlock.type === "text") {
+            blocks[blocks.length - 1] = currentTextBlock;
+          } else {
+            blocks.push(currentTextBlock);
+          }
+        }
+        setStreamingContentBlocks(blocks);
+      };
+
+      // Helper function to process tool_result blocks
+      const processToolResult = (block: SDKContentBlock) => {
+        if (block.type === "tool_result" && block.tool_use_id) {
+          const existingCall = toolCallMap.get(block.tool_use_id);
+          if (existingCall) {
+            // Extract output text
+            let outputText = "";
+            if (typeof block.content === "string") {
+              outputText = block.content;
+            } else if (Array.isArray(block.content)) {
+              outputText = block.content
+                .filter(
+                  (c): c is { type: string; text: string } =>
+                    c.type === "text" && typeof c.text === "string"
+                )
+                .map((c) => c.text)
+                .join("\n");
+            }
+
+            existingCall.output = outputText;
+            existingCall.status = block.is_error ? "error" : "completed";
+            if (block.is_error) {
+              existingCall.error = outputText;
+            }
+            toolCallMap.set(block.tool_use_id, existingCall);
+            setStreamingToolCalls(Array.from(toolCallMap.values()));
+
+            // Update the tool call in content blocks
+            for (let i = 0; i < contentBlocksList.length; i++) {
+              const cb = contentBlocksList[i];
+              if (cb.type === "tool_call" && cb.toolCall.id === block.tool_use_id) {
+                contentBlocksList[i] = { type: "tool_call", toolCall: existingCall };
+                break;
+              }
+            }
+            updateContentBlocks();
+          }
+        }
+      };
+
       try {
         const response = await fetch("/api/chat", {
           method: "POST",
@@ -141,62 +197,6 @@ export function useChat({
 
               try {
                 const sdkMessage: SDKMessage = JSON.parse(data);
-
-                // Helper function to update content blocks state
-                const updateContentBlocks = () => {
-                  // Build blocks list including current text block
-                  const blocks = [...contentBlocksList];
-                  if (currentTextBlock && currentTextBlock.text) {
-                    // Check if the last block is text - if so, update it
-                    const lastBlock = blocks[blocks.length - 1];
-                    if (lastBlock && lastBlock.type === "text") {
-                      blocks[blocks.length - 1] = currentTextBlock;
-                    } else {
-                      blocks.push(currentTextBlock);
-                    }
-                  }
-                  setStreamingContentBlocks(blocks);
-                };
-
-                // Helper function to process tool_result blocks
-                const processToolResult = (block: SDKContentBlock) => {
-                  if (block.type === "tool_result" && block.tool_use_id) {
-                    const existingCall = toolCallMap.get(block.tool_use_id);
-                    if (existingCall) {
-                      // Extract output text
-                      let outputText = "";
-                      if (typeof block.content === "string") {
-                        outputText = block.content;
-                      } else if (Array.isArray(block.content)) {
-                        outputText = block.content
-                          .filter(
-                            (c): c is { type: string; text: string } =>
-                              c.type === "text" && typeof c.text === "string"
-                          )
-                          .map((c) => c.text)
-                          .join("\n");
-                      }
-
-                      existingCall.output = outputText;
-                      existingCall.status = block.is_error ? "error" : "completed";
-                      if (block.is_error) {
-                        existingCall.error = outputText;
-                      }
-                      toolCallMap.set(block.tool_use_id, existingCall);
-                      setStreamingToolCalls(Array.from(toolCallMap.values()));
-
-                      // Update the tool call in content blocks
-                      for (let i = 0; i < contentBlocksList.length; i++) {
-                        const cb = contentBlocksList[i];
-                        if (cb.type === "tool_call" && cb.toolCall.id === block.tool_use_id) {
-                          contentBlocksList[i] = { type: "tool_call", toolCall: existingCall };
-                          break;
-                        }
-                      }
-                      updateContentBlocks();
-                    }
-                  }
-                };
 
                 // Handle different message types
                 if (sdkMessage.type === "assistant" && sdkMessage.message?.content) {
@@ -258,25 +258,22 @@ export function useChat({
                   }
                 }
 
-                // Handle user messages (which contain tool_result blocks)
-                if (sdkMessage.type === "user" && sdkMessage.message?.content) {
-                  for (const block of sdkMessage.message.content) {
-                    processToolResult(block);
-                  }
-                }
-
+                // Handle tool results from non-assistant messages (user messages contain tool_result blocks)
                 // Also check for tool_result at top level (some SDK versions might send this way)
-                if (
-                  (sdkMessage as unknown as SDKContentBlock).type === "tool_result" &&
-                  (sdkMessage as unknown as SDKContentBlock).tool_use_id
-                ) {
-                  processToolResult(sdkMessage as unknown as SDKContentBlock);
-                }
+                if (sdkMessage.type !== "assistant") {
+                  // Check top-level for tool_result
+                  if (
+                    (sdkMessage as unknown as SDKContentBlock).type === "tool_result" &&
+                    (sdkMessage as unknown as SDKContentBlock).tool_use_id
+                  ) {
+                    processToolResult(sdkMessage as unknown as SDKContentBlock);
+                  }
 
-                // Handle any message with content array (catch-all for tool results)
-                if (sdkMessage.message?.content && sdkMessage.type !== "assistant") {
-                  for (const block of sdkMessage.message.content) {
-                    processToolResult(block);
+                  // Check content array for tool_result blocks
+                  if (sdkMessage.message?.content) {
+                    for (const block of sdkMessage.message.content) {
+                      processToolResult(block);
+                    }
                   }
                 }
 
