@@ -1,6 +1,6 @@
 "use client";
 
-import type { Message, Exercise, ToolCall } from "@/lib/types";
+import type { Message, Exercise, ToolCall, ContentBlock } from "@/lib/types";
 import ChatMessage from "./Message";
 import ExerciseBlock from "./ExerciseBlock";
 
@@ -9,6 +9,7 @@ interface MessageListProps {
   currentExercise: Exercise | null;
   streamingContent: string;
   streamingToolCalls: ToolCall[];
+  streamingContentBlocks: ContentBlock[];
   isStreaming: boolean;
 }
 
@@ -17,6 +18,7 @@ export default function MessageList({
   currentExercise,
   streamingContent,
   streamingToolCalls,
+  streamingContentBlocks,
   isStreaming,
 }: MessageListProps) {
   return (
@@ -29,8 +31,8 @@ export default function MessageList({
         </div>
       ))}
 
-      {/* Show streaming content with tool calls */}
-      {(streamingContent || streamingToolCalls.length > 0) && (
+      {/* Show streaming content with interleaved blocks */}
+      {(streamingContent || streamingToolCalls.length > 0 || streamingContentBlocks.length > 0) && (
         <ChatMessage
           message={{
             id: "streaming",
@@ -38,28 +40,29 @@ export default function MessageList({
             content: streamingContent,
             timestamp: new Date().toISOString(),
             toolCalls: streamingToolCalls.length > 0 ? streamingToolCalls : undefined,
+            contentBlocks: streamingContentBlocks.length > 0 ? streamingContentBlocks : undefined,
           }}
         />
       )}
 
       {/* Show typing indicator */}
       {isStreaming && !streamingContent && streamingToolCalls.length === 0 && (
-        <div className="flex items-center gap-2 text-gray-500">
+        <div className="flex items-center gap-2 text-muted-foreground">
           <div className="flex gap-1">
             <span
-              className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+              className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce"
               style={{ animationDelay: "0ms" }}
             />
             <span
-              className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+              className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce"
               style={{ animationDelay: "150ms" }}
             />
             <span
-              className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+              className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce"
               style={{ animationDelay: "300ms" }}
             />
           </div>
-          <span className="text-sm">Thinking...</span>
+          <span className="text-xs">Thinking...</span>
         </div>
       )}
 

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Button } from "@/components/UI/button";
-import { Textarea } from "@/components/UI/textarea";
+import { Button } from "@/components/ui/button";
+import { ArrowUp } from "@phosphor-icons/react";
 
 interface MessageInputProps {
   onSend: (message: string) => void;
@@ -43,8 +43,9 @@ export default function MessageInput({
   };
 
   return (
-    <div className="flex gap-2">
-      <Textarea
+    <div className="ring-1 ring-border bg-card focus-within:ring-primary/50 transition-all">
+      {/* Text area */}
+      <textarea
         ref={textareaRef}
         value={input}
         onChange={(e) => setInput(e.target.value)}
@@ -52,11 +53,19 @@ export default function MessageInput({
         placeholder={placeholder}
         disabled={disabled}
         rows={1}
-        className="flex-1 min-h-[40px] resize-none"
+        className="w-full px-4 py-3 text-sm bg-transparent outline-none resize-none placeholder:text-muted-foreground disabled:opacity-50 disabled:cursor-not-allowed"
       />
-      <Button onClick={handleSubmit} disabled={disabled || !input.trim()}>
-        Send
-      </Button>
+
+      {/* Action bar */}
+      <div className="flex items-center justify-between px-3 py-2">
+        <div className="flex items-center gap-1">
+          {/* Future buttons: model selector, add context, etc. */}
+          <span className="text-[10px] text-muted-foreground">Press Enter to send</span>
+        </div>
+        <Button size="icon-sm" onClick={handleSubmit} disabled={disabled || !input.trim()}>
+          <ArrowUp size={16} weight="bold" />
+        </Button>
+      </div>
     </div>
   );
 }

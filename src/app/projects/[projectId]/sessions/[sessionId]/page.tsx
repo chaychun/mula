@@ -3,20 +3,24 @@
 import { useState, useEffect, useCallback, use } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import Sidebar from "@/components/Sidebar/Sidebar";
+import AppSidebar from "@/components/Sidebar/AppSidebar";
+import { SidebarInset } from "@/components/ui/sidebar";
 import Chat from "@/components/Chat/Chat";
 import EditorToolbar from "@/components/Editor/EditorToolbar";
 import { useProjects } from "@/hooks/useProjects";
 import { useSessions } from "@/hooks/useSessions";
 import { useChat } from "@/hooks/useChat";
+import { Button, Spinner } from "@/components/ui";
 import type { Exercise } from "@/lib/types";
 
 // Dynamically import Monaco editor to avoid SSR issues
 const CodeEditor = dynamic(() => import("@/components/Editor/CodeEditor"), {
   ssr: false,
   loading: () => (
-    <div className="h-full flex items-center justify-center bg-gray-900 text-gray-400">
-      Loading editor...
+    <div className="h-full flex items-center justify-center bg-card text-muted-foreground">
+      <div className="text-center">
+        <div className="mb-2">Loading editor...</div>
+      </div>
     </div>
   ),
 });
@@ -51,21 +55,28 @@ export default function SessionPage({ params }: PageProps) {
   const [currentExercise, setCurrentExercise] = useState<Exercise | null>(null);
 
   // Chat hook
-  const { messages, isStreaming, streamingContent, streamingToolCalls, sendMessage, loadMessages } =
-    useChat({
-      projectId,
-      sessionId,
-      agentSessionId,
-      onExercise: (exercise) => {
-        setCurrentExercise(exercise);
-        setEditorCode(exercise.starterCode);
-        setEditorLanguage(exercise.language);
-      },
-      onSessionId: setAgentSessionId,
-      onTitleGenerated: (title) => {
-        updateSessionTitleLocal(sessionId, title);
-      },
-    });
+  const {
+    messages,
+    isStreaming,
+    streamingContent,
+    streamingToolCalls,
+    streamingContentBlocks,
+    sendMessage,
+    loadMessages,
+  } = useChat({
+    projectId,
+    sessionId,
+    agentSessionId,
+    onExercise: (exercise) => {
+      setCurrentExercise(exercise);
+      setEditorCode(exercise.starterCode);
+      setEditorLanguage(exercise.language);
+    },
+    onSessionId: setAgentSessionId,
+    onTitleGenerated: (title) => {
+      updateSessionTitleLocal(sessionId, title);
+    },
+  });
 
   // Fetch sessions for sidebar
   useEffect(() => {
@@ -150,9 +161,9 @@ export default function SessionPage({ params }: PageProps) {
   );
 
   return (
-    <div className="flex h-screen">
+    <>
       {/* Sidebar */}
-      <Sidebar
+      <AppSidebar
         projects={projects}
         sessions={sessions}
         currentProjectId={projectId}
@@ -164,33 +175,27 @@ export default function SessionPage({ params }: PageProps) {
         onCreateSession={handleCreateSession}
         onRenameProject={handleRenameProject}
         onRenameSession={handleRenameSession}
-        className="w-64 border-r border-gray-200 dark:border-gray-800"
       />
 
       {/* Main Content */}
       {sessionLoading && !currentSession ? (
-        <main className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-950">
+        <SidebarInset className="flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <p className="text-gray-500">Loading session...</p>
+            <Spinner size={32} className="mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading session...</p>
           </div>
-        </main>
+        </SidebarInset>
       ) : sessionError ? (
-        <main className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-950">
+        <SidebarInset className="flex items-center justify-center">
           <div className="text-center">
-            <p className="text-red-500 mb-4">Error: {sessionError}</p>
-            <button
-              onClick={() => selectSession(projectId, sessionId)}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              Retry
-            </button>
+            <p className="text-destructive mb-4">Error: {sessionError}</p>
+            <Button onClick={() => selectSession(projectId, sessionId)}>Retry</Button>
           </div>
-        </main>
+        </SidebarInset>
       ) : (
-        <main className="flex-1 flex">
+        <SidebarInset className="flex flex-row overflow-hidden max-h-svh">
           {/* Code Editor */}
-          <div className="w-1/2 flex flex-col border-r border-gray-200 dark:border-gray-800">
+          <div className="w-1/2 flex flex-col border-r border-border overflow-hidden">
             <EditorToolbar
               language={editorLanguage}
               hasExercise={!!currentExercise}
@@ -198,7 +203,7 @@ export default function SessionPage({ params }: PageProps) {
               onSubmit={handleSubmit}
               onHint={handleHint}
             />
-            <div className="flex-1">
+            <div className="flex-1 overflow-hidden">
               <CodeEditor code={editorCode} language={editorLanguage} onChange={setEditorCode} />
             </div>
           </div>
@@ -210,12 +215,13 @@ export default function SessionPage({ params }: PageProps) {
             isStreaming={isStreaming}
             streamingContent={streamingContent}
             streamingToolCalls={streamingToolCalls}
+            streamingContentBlocks={streamingContentBlocks}
             loading={sessionLoading || !currentSession}
             onSendMessage={handleSendMessage}
-            className="w-1/2"
+            className="w-1/2 overflow-hidden"
           />
-        </main>
+        </SidebarInset>
       )}
-    </div>
+    </>
   );
 }
