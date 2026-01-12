@@ -9,14 +9,18 @@ export function useSessions(_projectId: string | null) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch sessions for a project
+  // Fetch sessions for a project (merges with existing sessions from other projects)
   const fetchSessions = useCallback(async (pid: string) => {
     try {
       setLoading(true);
       const response = await fetch(`/api/projects/${pid}/sessions`);
       if (!response.ok) throw new Error("Failed to fetch sessions");
-      const data = await response.json();
-      setSessions(data);
+      const data: Session[] = await response.json();
+      // Merge: keep sessions from other projects, replace sessions for this project
+      setSessions((prev) => {
+        const otherProjectSessions = prev.filter((s) => s.projectId !== pid);
+        return [...otherProjectSessions, ...data];
+      });
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
-import type { Message, Exercise, ToolCall, ContentBlock } from "@/lib/types";
+import { useState, useCallback, useRef, useEffect } from "react";
+import type { Message, Exercise, ToolCall, ContentBlock, ExerciseSubmission } from "@/lib/types";
 import { generateTitleFromMessage } from "@/lib/utils/generateTitle";
 
 interface SDKContentBlock {
@@ -34,7 +34,7 @@ interface UseChatOptions {
   projectId: string | null;
   sessionId: string | null;
   agentSessionId?: string;
-  onExercise?: (exercise: Exercise) => void;
+  onExerciseCreated?: (exercise: Exercise) => void;
   onSessionId?: (sessionId: string) => void;
   onTitleGenerated?: (title: string) => void;
 }
@@ -43,7 +43,7 @@ export function useChat({
   projectId,
   sessionId,
   agentSessionId,
-  onExercise,
+  onExerciseCreated,
   onSessionId,
   onTitleGenerated,
 }: UseChatOptions) {
@@ -53,9 +53,73 @@ export function useChat({
   const [streamingToolCalls, setStreamingToolCalls] = useState<ToolCall[]>([]);
   const [streamingContentBlocks, setStreamingContentBlocks] = useState<ContentBlock[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [activeExercise, setActiveExercise] = useState<Exercise | null>(null);
+  const [exercises, setExercises] = useState<Record<string, Exercise>>({});
   const abortControllerRef = useRef<AbortController | null>(null);
   const titleGeneratedRef = useRef(false);
   const messagesRef = useRef<Message[]>([]);
+  // Track mounted state to prevent state updates after unmount
+  const mountedRef = useRef(true);
+
+  // Clean up on unmount
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  // Helper to fetch session with retries (handles race condition where MCP tool
+  // has written to disk but read returns stale data)
+  // Accepts an optional AbortSignal for cancellation
+  const fetchSessionWithRetry = useCallback(
+    async (maxAttempts = 3, signal?: AbortSignal): Promise<Record<string, Exercise> | null> => {
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        // Check cancellation before each attempt
+        if (signal?.aborted || !mountedRef.current) {
+          return null;
+        }
+
+        if (attempt > 0) {
+          // Use a cancellable delay
+          await new Promise<void>((resolve, reject) => {
+            const timeoutId = setTimeout(resolve, 200 * attempt);
+            signal?.addEventListener("abort", () => {
+              clearTimeout(timeoutId);
+              reject(new DOMException("Aborted", "AbortError"));
+            });
+          }).catch(() => null); // Swallow abort errors
+
+          // Check again after delay
+          if (signal?.aborted || !mountedRef.current) {
+            return null;
+          }
+        }
+
+        try {
+          const response = await fetch(`/api/projects/${projectId}/sessions/${sessionId}`, {
+            cache: "no-store",
+            signal,
+          });
+
+          if (response.ok) {
+            const session = await response.json();
+            if (session.exercises && Object.keys(session.exercises).length > 0) {
+              return session.exercises;
+            }
+          }
+        } catch (err) {
+          // Ignore abort errors, rethrow others
+          if (err instanceof Error && err.name === "AbortError") {
+            return null;
+          }
+          throw err;
+        }
+      }
+      return null;
+    },
+    [projectId, sessionId]
+  );
 
   // Generate a unique message ID
   const generateMessageId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -65,6 +129,7 @@ export function useChat({
     async (
       content: string,
       action: "message" | "submit" | "hint" = "message",
+      exerciseSubmission?: ExerciseSubmission,
       editorCode?: string
     ) => {
       if (!projectId || !sessionId) {
@@ -72,13 +137,14 @@ export function useChat({
         return;
       }
 
-      // Add user message immediately (only for regular messages)
-      if (action === "message") {
+      // Add user message immediately (for regular messages and submissions)
+      if (action === "message" || action === "submit") {
         const userMessage: Message = {
           id: generateMessageId(),
           role: "user",
           content,
           timestamp: new Date().toISOString(),
+          exerciseSubmission,
         };
         messagesRef.current = [...messagesRef.current, userMessage];
         setMessages(messagesRef.current);
@@ -97,6 +163,8 @@ export function useChat({
       const toolCallMap = new Map<string, ToolCall>();
       // Track content blocks in order
       const contentBlocksList: ContentBlock[] = [];
+      // Track pending exercise fetches to ensure they complete before finalizing message
+      const pendingExerciseFetches: Promise<void>[] = [];
       let currentTextBlock: { type: "text"; text: string } | null = null;
 
       // Helper function to update content blocks state
@@ -116,7 +184,7 @@ export function useChat({
       };
 
       // Helper function to process tool_result blocks
-      const processToolResult = (block: SDKContentBlock) => {
+      const processToolResult = async (block: SDKContentBlock) => {
         if (block.type === "tool_result" && block.tool_use_id) {
           const existingCall = toolCallMap.get(block.tool_use_id);
           if (existingCall) {
@@ -151,6 +219,70 @@ export function useChat({
               }
             }
             updateContentBlocks();
+
+            // Detect exercise creation from tool call result
+            if (
+              existingCall.name === "mcp__coding-tutor__create_exercise" &&
+              existingCall.status === "completed" &&
+              existingCall.output
+            ) {
+              // Track this fetch so we can await it before finalizing the message
+              // Pass the abort signal so fetches can be cancelled if request is aborted
+              const fetchPromise = (async () => {
+                try {
+                  const result = JSON.parse(existingCall.output);
+                  if (result.exerciseId) {
+                    const exercises = await fetchSessionWithRetry(
+                      3,
+                      abortControllerRef.current?.signal
+                    );
+                    // Check mounted state before updating state
+                    if (exercises && mountedRef.current) {
+                      setExercises(exercises);
+                      const exercise = exercises[result.exerciseId];
+                      if (exercise) {
+                        setActiveExercise(exercise);
+                        onExerciseCreated?.(exercise);
+                      } else {
+                        console.warn(
+                          "[useChat] Exercise not found after retries:",
+                          result.exerciseId
+                        );
+                      }
+                    }
+                  }
+                } catch (e) {
+                  console.error("Failed to parse exercise creation result:", e);
+                }
+              })();
+              pendingExerciseFetches.push(fetchPromise);
+            }
+
+            // Detect exercise update from tool call result (status changes, etc.)
+            if (
+              existingCall.name === "mcp__coding-tutor__update_exercise" &&
+              existingCall.status === "completed" &&
+              existingCall.output
+            ) {
+              const fetchPromise = (async () => {
+                try {
+                  const result = JSON.parse(existingCall.output);
+                  if (result.exerciseId) {
+                    const exercises = await fetchSessionWithRetry(
+                      3,
+                      abortControllerRef.current?.signal
+                    );
+                    // Check mounted state before updating state
+                    if (exercises && mountedRef.current) {
+                      setExercises(exercises);
+                    }
+                  }
+                } catch (e) {
+                  console.error("Failed to parse exercise update result:", e);
+                }
+              })();
+              pendingExerciseFetches.push(fetchPromise);
+            }
           }
         }
       };
@@ -181,7 +313,6 @@ export function useChat({
 
         const decoder = new TextDecoder();
         let accumulatedContent = "";
-        let detectedExercise: Exercise | null = null;
 
         while (true) {
           const { done, value } = await reader.read();
@@ -202,17 +333,6 @@ export function useChat({
                 if (sdkMessage.type === "assistant" && sdkMessage.message?.content) {
                   for (const block of sdkMessage.message.content) {
                     if (block.type === "text" && block.text) {
-                      // Check if this is an exercise JSON
-                      try {
-                        const parsed = JSON.parse(block.text);
-                        if (parsed.type === "exercise") {
-                          detectedExercise = parsed as Exercise;
-                          onExercise?.(detectedExercise);
-                          continue;
-                        }
-                      } catch {
-                        // Not JSON, treat as regular text
-                      }
                       accumulatedContent += block.text;
                       setStreamingContent(accumulatedContent);
 
@@ -245,16 +365,10 @@ export function useChat({
                       // Add tool call to content blocks
                       contentBlocksList.push({ type: "tool_call", toolCall });
                       updateContentBlocks();
-
-                      // Special handling for create_exercise
-                      if (block.name.includes("create_exercise") && block.input) {
-                        detectedExercise = block.input as unknown as Exercise;
-                        onExercise?.(detectedExercise);
-                      }
                     }
 
                     // Handle tool_result blocks in assistant messages
-                    processToolResult(block);
+                    await processToolResult(block);
                   }
                 }
 
@@ -266,13 +380,13 @@ export function useChat({
                     (sdkMessage as unknown as SDKContentBlock).type === "tool_result" &&
                     (sdkMessage as unknown as SDKContentBlock).tool_use_id
                   ) {
-                    processToolResult(sdkMessage as unknown as SDKContentBlock);
+                    await processToolResult(sdkMessage as unknown as SDKContentBlock);
                   }
 
                   // Check content array for tool_result blocks
                   if (sdkMessage.message?.content) {
                     for (const block of sdkMessage.message.content) {
-                      processToolResult(block);
+                      await processToolResult(block);
                     }
                   }
                 }
@@ -318,13 +432,18 @@ export function useChat({
           contentBlocksList.push(currentTextBlock);
         }
 
+        // Wait for any pending exercise fetches to complete before updating messages
+        // This ensures exercises are in state when the message renders
+        if (pendingExerciseFetches.length > 0) {
+          await Promise.all(pendingExerciseFetches);
+        }
+
         if (accumulatedContent || finalToolCalls.length > 0) {
           const assistantMessage: Message = {
             id: generateMessageId(),
             role: "assistant",
             content: accumulatedContent,
             timestamp: new Date().toISOString(),
-            exercise: detectedExercise || undefined,
             toolCalls: finalToolCalls.length > 0 ? finalToolCalls : undefined,
             contentBlocks: contentBlocksList.length > 0 ? contentBlocksList : undefined,
           };
@@ -387,8 +506,70 @@ export function useChat({
         abortControllerRef.current = null;
       }
     },
-    [projectId, sessionId, agentSessionId, onExercise, onSessionId, onTitleGenerated]
+    [
+      projectId,
+      sessionId,
+      agentSessionId,
+      onExerciseCreated,
+      onSessionId,
+      onTitleGenerated,
+      fetchSessionWithRetry,
+    ]
   );
+
+  // Submit exercise
+  const submitExercise = useCallback(
+    async (code: string) => {
+      if (!activeExercise || !sessionId) return;
+
+      // Store exercise context for recovery in case of error
+      const exerciseToSubmit = activeExercise;
+      const attemptId = crypto.randomUUID();
+
+      // Create the submission message content for the AI
+      const submissionContent = `[Exercise Submission]
+Title: ${exerciseToSubmit.title}
+
+Code:
+\`\`\`${exerciseToSubmit.language}
+${code}
+\`\`\``;
+
+      // Create exerciseSubmission for the message
+      const exerciseSubmission: ExerciseSubmission = {
+        exerciseId: exerciseToSubmit.id,
+        attemptId,
+        code,
+        title: exerciseToSubmit.title,
+        instructions: exerciseToSubmit.instructions,
+      };
+
+      // Clear active exercise (panel disappears) - do this before sending
+      // so the UI feels responsive
+      setActiveExercise(null);
+
+      try {
+        // Send the message with exercise submission metadata and editor code
+        await sendMessage(submissionContent, "submit", exerciseSubmission, code);
+      } catch (err) {
+        // Restore exercise context on error so user can retry
+        setActiveExercise(exerciseToSubmit);
+        throw err;
+      }
+    },
+    [activeExercise, sessionId, sendMessage]
+  );
+
+  // Skip exercise
+  const skipExercise = useCallback(async () => {
+    if (!activeExercise || !sessionId) return;
+
+    // Clear active exercise
+    setActiveExercise(null);
+
+    // Send skip message to AI
+    await sendMessage(`[Skipped exercise: ${activeExercise.title}]`, "message");
+  }, [activeExercise, sessionId, sendMessage]);
 
   // Cancel ongoing request
   const cancelRequest = useCallback(() => {
@@ -468,5 +649,11 @@ export function useChat({
     cancelRequest,
     clearMessages,
     loadMessages,
+    activeExercise,
+    setActiveExercise,
+    exercises,
+    setExercises,
+    submitExercise,
+    skipExercise,
   };
 }

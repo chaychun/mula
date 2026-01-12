@@ -6,7 +6,7 @@ import ExerciseBlock from "./ExerciseBlock";
 
 interface MessageListProps {
   messages: Message[];
-  currentExercise: Exercise | null;
+  exercises?: Record<string, Exercise>;
   streamingContent: string;
   streamingToolCalls: ToolCall[];
   streamingContentBlocks: ContentBlock[];
@@ -15,7 +15,7 @@ interface MessageListProps {
 
 export default function MessageList({
   messages,
-  currentExercise,
+  exercises,
   streamingContent,
   streamingToolCalls,
   streamingContentBlocks,
@@ -25,7 +25,7 @@ export default function MessageList({
     <div className="space-y-4">
       {messages.map((message) => (
         <div key={message.id}>
-          <ChatMessage message={message} />
+          <ChatMessage message={message} exercises={exercises} />
           {/* Show exercise block if this message has one */}
           {message.exercise && <ExerciseBlock exercise={message.exercise} />}
         </div>
@@ -42,6 +42,7 @@ export default function MessageList({
             toolCalls: streamingToolCalls.length > 0 ? streamingToolCalls : undefined,
             contentBlocks: streamingContentBlocks.length > 0 ? streamingContentBlocks : undefined,
           }}
+          exercises={exercises}
         />
       )}
 
@@ -64,11 +65,6 @@ export default function MessageList({
           </div>
           <span className="text-xs">Thinking...</span>
         </div>
-      )}
-
-      {/* Show current exercise after messages */}
-      {currentExercise && !messages.some((m) => m.exercise?.title === currentExercise.title) && (
-        <ExerciseBlock exercise={currentExercise} />
       )}
     </div>
   );

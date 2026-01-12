@@ -1,6 +1,69 @@
 import * as fs from "fs/promises";
 import * as path from "path";
 
+// Lock queue implementation to prevent concurrent writes
+// Uses a queue pattern to avoid race conditions between check and acquire
+interface LockEntry {
+  promise: Promise<void>;
+  release: () => void;
+  timeoutId: ReturnType<typeof setTimeout>;
+}
+const fileLockQueues = new Map<string, LockEntry>();
+
+// Lock timeout - if a lock is held longer than this, it's automatically released
+// to prevent deadlocks from unhandled exceptions
+const LOCK_TIMEOUT_MS = 30000;
+
+async function acquireLock(filePath: string): Promise<() => void> {
+  // Get the current lock entry (or create a resolved one if none)
+  const currentEntry = fileLockQueues.get(filePath);
+  const currentLock = currentEntry?.promise ?? Promise.resolve();
+
+  // Create a new lock that will be released when the caller is done
+  let releaseLock: () => void;
+  const newLock = new Promise<void>((resolve) => {
+    releaseLock = resolve;
+  });
+
+  // Track whether this lock has been released
+  let released = false;
+
+  // Set up automatic timeout release to prevent deadlocks
+  const timeoutId = setTimeout(() => {
+    if (!released) {
+      console.warn(`[storage] Lock timeout for ${filePath}, auto-releasing to prevent deadlock`);
+      doRelease();
+    }
+  }, LOCK_TIMEOUT_MS);
+
+  const doRelease = () => {
+    if (released) return; // Prevent double-release
+    released = true;
+    clearTimeout(timeoutId);
+    // Clean up the queue if this is the last lock
+    if (fileLockQueues.get(filePath)?.promise === newLock) {
+      fileLockQueues.delete(filePath);
+    }
+    releaseLock!();
+  };
+
+  // Create the lock entry
+  const newEntry: LockEntry = {
+    promise: newLock,
+    release: doRelease,
+    timeoutId,
+  };
+
+  // Chain our lock after the current one - this is atomic since we set
+  // the new lock before awaiting the old one
+  fileLockQueues.set(filePath, newEntry);
+
+  // Wait for the previous lock to be released
+  await currentLock;
+
+  return doRelease;
+}
+
 // Get the data path from environment or use default
 export function getDataPath(): string {
   // In development, use .dev-data in the project root
@@ -39,10 +102,51 @@ export async function readJsonFile<T>(filePath: string): Promise<T | null> {
   }
 }
 
-// Write JSON file with directory creation
+// Atomic read-modify-write operation with file locking
+export async function updateJsonFile<T>(
+  filePath: string,
+  updater: (current: T | null) => T | null
+): Promise<T | null> {
+  const release = await acquireLock(filePath);
+  let tempPath: string | null = null;
+  try {
+    const current = await readJsonFile<T>(filePath);
+    const updated = updater(current);
+    if (updated !== null) {
+      await ensureDir(path.dirname(filePath));
+      tempPath = `${filePath}.tmp.${Date.now()}`;
+      await fs.writeFile(tempPath, JSON.stringify(updated, null, 2), "utf-8");
+      await fs.rename(tempPath, filePath);
+      tempPath = null; // Successfully renamed, no cleanup needed
+    }
+    return updated;
+  } finally {
+    // Clean up orphaned temp file if rename failed
+    if (tempPath) {
+      await fs.unlink(tempPath).catch(() => {});
+    }
+    release();
+  }
+}
+
+// Write JSON file with directory creation and atomic write
 export async function writeJsonFile<T>(filePath: string, data: T): Promise<void> {
-  await ensureDir(path.dirname(filePath));
-  await fs.writeFile(filePath, JSON.stringify(data, null, 2), "utf-8");
+  const release = await acquireLock(filePath);
+  let tempPath: string | null = null;
+  try {
+    await ensureDir(path.dirname(filePath));
+    // Write to temp file first, then rename for atomic operation
+    tempPath = `${filePath}.tmp.${Date.now()}`;
+    await fs.writeFile(tempPath, JSON.stringify(data, null, 2), "utf-8");
+    await fs.rename(tempPath, filePath);
+    tempPath = null; // Successfully renamed, no cleanup needed
+  } finally {
+    // Clean up orphaned temp file if rename failed
+    if (tempPath) {
+      await fs.unlink(tempPath).catch(() => {});
+    }
+    release();
+  }
 }
 
 // List directories in a directory (filters out files like .DS_Store)

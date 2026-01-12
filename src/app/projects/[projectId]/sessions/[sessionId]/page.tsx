@@ -1,29 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback, use } from "react";
-import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import AppSidebar from "@/components/Sidebar/AppSidebar";
-import { SidebarInset } from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import Chat from "@/components/Chat/Chat";
-import EditorToolbar from "@/components/Editor/EditorToolbar";
 import { useProjects } from "@/hooks/useProjects";
 import { useSessions } from "@/hooks/useSessions";
 import { useChat } from "@/hooks/useChat";
 import { Button, Spinner } from "@/components/ui";
-import type { Exercise } from "@/lib/types";
-
-// Dynamically import Monaco editor to avoid SSR issues
-const CodeEditor = dynamic(() => import("@/components/Editor/CodeEditor"), {
-  ssr: false,
-  loading: () => (
-    <div className="h-full flex items-center justify-center bg-card text-muted-foreground">
-      <div className="text-center">
-        <div className="mb-2">Loading editor...</div>
-      </div>
-    </div>
-  ),
-});
 
 interface PageProps {
   params: Promise<{ projectId: string; sessionId: string }>;
@@ -49,12 +34,7 @@ export default function SessionPage({ params }: PageProps) {
     updateSessionTitleLocal,
   } = useSessions(projectId);
 
-  // Editor state
-  const [editorCode, setEditorCode] = useState("// Start coding here...\n");
-  const [editorLanguage, setEditorLanguage] = useState("javascript");
-  const [currentExercise, setCurrentExercise] = useState<Exercise | null>(null);
-
-  // Chat hook
+  // Chat hook with exercise state
   const {
     messages,
     isStreaming,
@@ -63,15 +43,16 @@ export default function SessionPage({ params }: PageProps) {
     streamingContentBlocks,
     sendMessage,
     loadMessages,
+    activeExercise,
+    setActiveExercise,
+    exercises,
+    setExercises,
+    submitExercise,
+    skipExercise,
   } = useChat({
     projectId,
     sessionId,
     agentSessionId,
-    onExercise: (exercise) => {
-      setCurrentExercise(exercise);
-      setEditorCode(exercise.starterCode);
-      setEditorLanguage(exercise.language);
-    },
     onSessionId: setAgentSessionId,
     onTitleGenerated: (title) => {
       updateSessionTitleLocal(sessionId, title);
@@ -84,19 +65,33 @@ export default function SessionPage({ params }: PageProps) {
   }, [projectId, fetchSessions]);
 
   // Load session data when sessionId changes
+  // Note: We use selectSession directly and load messages from the returned session,
+  // NOT from currentSession state, to avoid re-loading messages when only the title updates
   useEffect(() => {
-    selectSession(projectId, sessionId);
-  }, [projectId, sessionId, selectSession]);
+    const loadSessionData = async () => {
+      const session = await selectSession(projectId, sessionId);
+      if (session) {
+        loadMessages(session.messages);
+        if (session.exercises) {
+          setExercises(session.exercises);
+        }
+        if (session.agentSessionId) {
+          setAgentSessionId(session.agentSessionId);
+        }
+      }
+    };
+    loadSessionData();
+  }, [projectId, sessionId, selectSession, loadMessages, setExercises, setAgentSessionId]);
 
-  // Load session messages when currentSession is available
+  // Restore active exercise when session loads
   useEffect(() => {
-    if (currentSession) {
-      loadMessages(currentSession.messages);
-      if (currentSession.agentSessionId) {
-        setAgentSessionId(currentSession.agentSessionId);
+    if (currentSession?.activeExerciseId && currentSession.exercises) {
+      const exercise = currentSession.exercises[currentSession.activeExerciseId];
+      if (exercise && (exercise.status === "active" || exercise.status === "pending_review")) {
+        setActiveExercise(exercise);
       }
     }
-  }, [currentSession, loadMessages]);
+  }, [currentSession?.activeExerciseId, currentSession?.exercises, setActiveExercise]);
 
   // Navigation handlers
   const handleSelectProject = useCallback(
@@ -138,14 +133,6 @@ export default function SessionPage({ params }: PageProps) {
     [sendMessage]
   );
 
-  const handleSubmit = useCallback(() => {
-    sendMessage("", "submit", editorCode);
-  }, [sendMessage, editorCode]);
-
-  const handleHint = useCallback(() => {
-    sendMessage("", "hint", editorCode);
-  }, [sendMessage, editorCode]);
-
   const handleRenameProject = useCallback(
     async (targetProjectId: string, newName: string) => {
       await updateProject(targetProjectId, { name: newName });
@@ -161,8 +148,7 @@ export default function SessionPage({ params }: PageProps) {
   );
 
   return (
-    <>
-      {/* Sidebar */}
+    <SidebarProvider className="h-svh overflow-hidden">
       <AppSidebar
         projects={projects}
         sessions={sessions}
@@ -176,52 +162,39 @@ export default function SessionPage({ params }: PageProps) {
         onRenameProject={handleRenameProject}
         onRenameSession={handleRenameSession}
       />
-
-      {/* Main Content */}
-      {sessionLoading && !currentSession ? (
-        <SidebarInset className="flex items-center justify-center">
-          <div className="text-center">
-            <Spinner size={32} className="mx-auto mb-4" />
-            <p className="text-muted-foreground">Loading session...</p>
-          </div>
-        </SidebarInset>
-      ) : sessionError ? (
-        <SidebarInset className="flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-destructive mb-4">Error: {sessionError}</p>
-            <Button onClick={() => selectSession(projectId, sessionId)}>Retry</Button>
-          </div>
-        </SidebarInset>
-      ) : (
-        <SidebarInset className="flex flex-row overflow-hidden max-h-svh">
-          {/* Code Editor */}
-          <div className="w-1/2 flex flex-col border-r border-border overflow-hidden">
-            <EditorToolbar
-              language={editorLanguage}
-              hasExercise={!!currentExercise}
-              isSubmitting={isStreaming}
-              onSubmit={handleSubmit}
-              onHint={handleHint}
-            />
-            <div className="flex-1 overflow-hidden">
-              <CodeEditor code={editorCode} language={editorLanguage} onChange={setEditorCode} />
+      <SidebarInset className="flex flex-col overflow-hidden">
+        {/* Loading State */}
+        {sessionLoading && !currentSession ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <Spinner size={32} className="mx-auto mb-4" />
+              <p className="text-muted-foreground">Loading session...</p>
             </div>
           </div>
-
-          {/* Chat */}
+        ) : sessionError ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <p className="text-destructive mb-4">Error: {sessionError}</p>
+              <Button onClick={() => selectSession(projectId, sessionId)}>Retry</Button>
+            </div>
+          </div>
+        ) : (
           <Chat
             messages={messages}
-            currentExercise={currentExercise}
+            exercises={exercises}
             isStreaming={isStreaming}
             streamingContent={streamingContent}
             streamingToolCalls={streamingToolCalls}
             streamingContentBlocks={streamingContentBlocks}
             loading={sessionLoading || !currentSession}
             onSendMessage={handleSendMessage}
-            className="w-1/2 overflow-hidden"
+            activeExercise={activeExercise}
+            onExerciseSubmit={submitExercise}
+            onExerciseSkip={skipExercise}
+            onExerciseReset={() => {}}
           />
-        </SidebarInset>
-      )}
-    </>
+        )}
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
