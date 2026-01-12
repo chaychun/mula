@@ -33,17 +33,22 @@ export default function ExercisePanel({
   const [isPending, setIsPending] = useState(false);
   const pendingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Clear timeout on unmount to prevent memory leak
+  // Clear timeout on unmount or when exercise changes to prevent memory leak
+  // and avoid state updates after the component is no longer relevant
   useEffect(() => {
     return () => {
       if (pendingTimeoutRef.current) {
         clearTimeout(pendingTimeoutRef.current);
+        pendingTimeoutRef.current = null;
       }
     };
-  }, []);
+  }, [exercise.id]);
 
   // Update code when exercise changes
   useEffect(() => {
+    // Reset pending state when exercise changes
+    setIsPending(false);
+
     if (exercise.attempts.length > 0) {
       setCode(exercise.attempts[exercise.attempts.length - 1].code);
     } else {

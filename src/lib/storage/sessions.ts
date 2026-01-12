@@ -141,13 +141,15 @@ export async function addExerciseToSession(
 }
 
 // Update an exercise in a session (atomic)
+// Returns true if exercise was found and updated, false if exercise doesn't exist
 export async function updateExerciseInSession(
   projectId: string,
   sessionId: string,
   exerciseId: string,
   updates: Partial<Exercise>
-): Promise<void> {
+): Promise<boolean> {
   const filePath = getSessionFilePath(projectId, sessionId);
+  let exerciseFound = false;
 
   await updateJsonFile<Session>(filePath, (session) => {
     if (!session) return null;
@@ -159,18 +161,20 @@ export async function updateExerciseInSession(
 
     const existingExercise = session.exercises[exerciseId];
     if (existingExercise) {
+      exerciseFound = true;
       session.exercises[exerciseId] = {
         ...existingExercise,
         ...updates,
         updatedAt: new Date().toISOString(),
       };
-    } else {
-      session.exercises[exerciseId] = updates as Exercise;
+      session.updatedAt = new Date().toISOString();
     }
+    // Don't create exercise if it doesn't exist - return session unchanged
 
-    session.updatedAt = new Date().toISOString();
     return session;
   });
+
+  return exerciseFound;
 }
 
 // Set the active exercise ID (atomic)

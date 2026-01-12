@@ -476,31 +476,40 @@ export function useChat({
     async (code: string) => {
       if (!activeExercise || !sessionId) return;
 
+      // Store exercise context for recovery in case of error
+      const exerciseToSubmit = activeExercise;
       const attemptId = crypto.randomUUID();
 
       // Create the submission message content for the AI
       const submissionContent = `[Exercise Submission]
-Title: ${activeExercise.title}
+Title: ${exerciseToSubmit.title}
 
 Code:
-\`\`\`${activeExercise.language}
+\`\`\`${exerciseToSubmit.language}
 ${code}
 \`\`\``;
 
       // Create exerciseSubmission for the message
       const exerciseSubmission: ExerciseSubmission = {
-        exerciseId: activeExercise.id,
+        exerciseId: exerciseToSubmit.id,
         attemptId,
         code,
-        title: activeExercise.title,
-        instructions: activeExercise.instructions,
+        title: exerciseToSubmit.title,
+        instructions: exerciseToSubmit.instructions,
       };
 
-      // Clear active exercise first (panel disappears)
+      // Clear active exercise (panel disappears) - do this before sending
+      // so the UI feels responsive
       setActiveExercise(null);
 
-      // Send the message with exercise submission metadata and editor code
-      await sendMessage(submissionContent, "submit", exerciseSubmission, code);
+      try {
+        // Send the message with exercise submission metadata and editor code
+        await sendMessage(submissionContent, "submit", exerciseSubmission, code);
+      } catch (err) {
+        // Restore exercise context on error so user can retry
+        setActiveExercise(exerciseToSubmit);
+        throw err;
+      }
     },
     [activeExercise, sessionId, sendMessage]
   );

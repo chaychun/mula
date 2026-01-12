@@ -205,7 +205,26 @@ export const tutorServer = createSdkMcpServer({
           updates.status = status;
         }
 
-        await updateExerciseInSession(projectId, sessionId, exerciseId, updates);
+        const exerciseFound = await updateExerciseInSession(
+          projectId,
+          sessionId,
+          exerciseId,
+          updates
+        );
+
+        if (!exerciseFound) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: JSON.stringify({
+                  error: `Exercise not found: ${exerciseId}`,
+                  exerciseId,
+                }),
+              },
+            ],
+          };
+        }
 
         // Clear activeExerciseId if terminal status
         if (status === "passed" || status === "skipped") {

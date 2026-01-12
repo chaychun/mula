@@ -81,7 +81,7 @@ export default function SessionPage({ params }: PageProps) {
       }
     };
     loadSessionData();
-  }, [projectId, sessionId, selectSession, loadMessages, setExercises]);
+  }, [projectId, sessionId, selectSession, loadMessages, setExercises, setAgentSessionId]);
 
   // Restore active exercise when session loads
   useEffect(() => {

@@ -75,17 +75,23 @@ export async function updateJsonFile<T>(
   updater: (current: T | null) => T | null
 ): Promise<T | null> {
   const release = await acquireLock(filePath);
+  let tempPath: string | null = null;
   try {
     const current = await readJsonFile<T>(filePath);
     const updated = updater(current);
     if (updated !== null) {
       await ensureDir(path.dirname(filePath));
-      const tempPath = `${filePath}.tmp.${Date.now()}`;
+      tempPath = `${filePath}.tmp.${Date.now()}`;
       await fs.writeFile(tempPath, JSON.stringify(updated, null, 2), "utf-8");
       await fs.rename(tempPath, filePath);
+      tempPath = null; // Successfully renamed, no cleanup needed
     }
     return updated;
   } finally {
+    // Clean up orphaned temp file if rename failed
+    if (tempPath) {
+      await fs.unlink(tempPath).catch(() => {});
+    }
     release();
   }
 }
@@ -93,13 +99,19 @@ export async function updateJsonFile<T>(
 // Write JSON file with directory creation and atomic write
 export async function writeJsonFile<T>(filePath: string, data: T): Promise<void> {
   const release = await acquireLock(filePath);
+  let tempPath: string | null = null;
   try {
     await ensureDir(path.dirname(filePath));
     // Write to temp file first, then rename for atomic operation
-    const tempPath = `${filePath}.tmp.${Date.now()}`;
+    tempPath = `${filePath}.tmp.${Date.now()}`;
     await fs.writeFile(tempPath, JSON.stringify(data, null, 2), "utf-8");
     await fs.rename(tempPath, filePath);
+    tempPath = null; // Successfully renamed, no cleanup needed
   } finally {
+    // Clean up orphaned temp file if rename failed
+    if (tempPath) {
+      await fs.unlink(tempPath).catch(() => {});
+    }
     release();
   }
 }
