@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import type { Message, Exercise, ToolCall, ContentBlock, ExerciseSubmission } from "@/lib/types";
 import { generateTitleFromMessage } from "@/lib/utils/generateTitle";
 
@@ -58,25 +58,62 @@ export function useChat({
   const abortControllerRef = useRef<AbortController | null>(null);
   const titleGeneratedRef = useRef(false);
   const messagesRef = useRef<Message[]>([]);
+  // Track mounted state to prevent state updates after unmount
+  const mountedRef = useRef(true);
+
+  // Clean up on unmount
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   // Helper to fetch session with retries (handles race condition where MCP tool
   // has written to disk but read returns stale data)
+  // Accepts an optional AbortSignal for cancellation
   const fetchSessionWithRetry = useCallback(
-    async (maxAttempts = 3): Promise<Record<string, Exercise> | null> => {
+    async (maxAttempts = 3, signal?: AbortSignal): Promise<Record<string, Exercise> | null> => {
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        if (attempt > 0) {
-          await new Promise((resolve) => setTimeout(resolve, 200 * attempt));
+        // Check cancellation before each attempt
+        if (signal?.aborted || !mountedRef.current) {
+          return null;
         }
 
-        const response = await fetch(`/api/projects/${projectId}/sessions/${sessionId}`, {
-          cache: "no-store",
-        });
+        if (attempt > 0) {
+          // Use a cancellable delay
+          await new Promise<void>((resolve, reject) => {
+            const timeoutId = setTimeout(resolve, 200 * attempt);
+            signal?.addEventListener("abort", () => {
+              clearTimeout(timeoutId);
+              reject(new DOMException("Aborted", "AbortError"));
+            });
+          }).catch(() => null); // Swallow abort errors
 
-        if (response.ok) {
-          const session = await response.json();
-          if (session.exercises && Object.keys(session.exercises).length > 0) {
-            return session.exercises;
+          // Check again after delay
+          if (signal?.aborted || !mountedRef.current) {
+            return null;
           }
+        }
+
+        try {
+          const response = await fetch(`/api/projects/${projectId}/sessions/${sessionId}`, {
+            cache: "no-store",
+            signal,
+          });
+
+          if (response.ok) {
+            const session = await response.json();
+            if (session.exercises && Object.keys(session.exercises).length > 0) {
+              return session.exercises;
+            }
+          }
+        } catch (err) {
+          // Ignore abort errors, rethrow others
+          if (err instanceof Error && err.name === "AbortError") {
+            return null;
+          }
+          throw err;
         }
       }
       return null;
@@ -190,12 +227,17 @@ export function useChat({
               existingCall.output
             ) {
               // Track this fetch so we can await it before finalizing the message
+              // Pass the abort signal so fetches can be cancelled if request is aborted
               const fetchPromise = (async () => {
                 try {
                   const result = JSON.parse(existingCall.output);
                   if (result.exerciseId) {
-                    const exercises = await fetchSessionWithRetry();
-                    if (exercises) {
+                    const exercises = await fetchSessionWithRetry(
+                      3,
+                      abortControllerRef.current?.signal
+                    );
+                    // Check mounted state before updating state
+                    if (exercises && mountedRef.current) {
                       setExercises(exercises);
                       const exercise = exercises[result.exerciseId];
                       if (exercise) {
@@ -226,8 +268,12 @@ export function useChat({
                 try {
                   const result = JSON.parse(existingCall.output);
                   if (result.exerciseId) {
-                    const exercises = await fetchSessionWithRetry();
-                    if (exercises) {
+                    const exercises = await fetchSessionWithRetry(
+                      3,
+                      abortControllerRef.current?.signal
+                    );
+                    // Check mounted state before updating state
+                    if (exercises && mountedRef.current) {
                       setExercises(exercises);
                     }
                   }

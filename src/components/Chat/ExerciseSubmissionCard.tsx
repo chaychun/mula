@@ -16,46 +16,47 @@ interface ExerciseSubmissionCardProps {
 }
 
 // Custom light theme matching the Lyra stone/yellow palette
+// Using hex fallbacks for browser compatibility (oklch not supported in Safari <15.4)
 const lightTheme = {
   'pre[class*="language-"]': {
-    background: "oklch(0.97 0.001 106.424)",
-    color: "oklch(0.147 0.004 49.25)",
+    background: "#f7f6f4", // oklch(0.97 0.001 106.424)
+    color: "#1c1917", // oklch(0.147 0.004 49.25)
   },
   'code[class*="language-"]': {
-    background: "oklch(0.97 0.001 106.424)",
-    color: "oklch(0.147 0.004 49.25)",
+    background: "#f7f6f4", // oklch(0.97 0.001 106.424)
+    color: "#1c1917", // oklch(0.147 0.004 49.25)
   },
-  comment: { color: "oklch(0.553 0.013 58.071)" },
-  prolog: { color: "oklch(0.553 0.013 58.071)" },
-  doctype: { color: "oklch(0.553 0.013 58.071)" },
-  cdata: { color: "oklch(0.553 0.013 58.071)" },
-  punctuation: { color: "oklch(0.421 0.095 57.708)" },
-  property: { color: "oklch(0.577 0.245 27.325)" },
-  tag: { color: "oklch(0.577 0.245 27.325)" },
-  boolean: { color: "oklch(0.577 0.245 27.325)" },
-  number: { color: "oklch(0.577 0.245 27.325)" },
-  constant: { color: "oklch(0.577 0.245 27.325)" },
-  symbol: { color: "oklch(0.577 0.245 27.325)" },
-  deleted: { color: "oklch(0.577 0.245 27.325)" },
-  selector: { color: "oklch(0.681 0.162 75.834)" },
-  "attr-name": { color: "oklch(0.681 0.162 75.834)" },
-  string: { color: "oklch(0.681 0.162 75.834)" },
-  char: { color: "oklch(0.681 0.162 75.834)" },
-  builtin: { color: "oklch(0.681 0.162 75.834)" },
-  inserted: { color: "oklch(0.681 0.162 75.834)" },
-  operator: { color: "oklch(0.421 0.095 57.708)" },
-  entity: { color: "oklch(0.421 0.095 57.708)" },
-  url: { color: "oklch(0.421 0.095 57.708)" },
-  ".language-css .token.string": { color: "oklch(0.421 0.095 57.708)" },
-  ".style .token.string": { color: "oklch(0.421 0.095 57.708)" },
-  atrule: { color: "oklch(0.852 0.199 91.936)" },
-  "attr-value": { color: "oklch(0.852 0.199 91.936)" },
-  keyword: { color: "oklch(0.852 0.199 91.936)" },
-  function: { color: "oklch(0.554 0.135 66.442)" },
-  "class-name": { color: "oklch(0.554 0.135 66.442)" },
-  regex: { color: "oklch(0.681 0.162 75.834)" },
-  important: { color: "oklch(0.681 0.162 75.834)", fontWeight: "bold" },
-  variable: { color: "oklch(0.421 0.095 57.708)" },
+  comment: { color: "#78716c" }, // oklch(0.553 0.013 58.071)
+  prolog: { color: "#78716c" },
+  doctype: { color: "#78716c" },
+  cdata: { color: "#78716c" },
+  punctuation: { color: "#6b5c4d" }, // oklch(0.421 0.095 57.708)
+  property: { color: "#c2410c" }, // oklch(0.577 0.245 27.325)
+  tag: { color: "#c2410c" },
+  boolean: { color: "#c2410c" },
+  number: { color: "#c2410c" },
+  constant: { color: "#c2410c" },
+  symbol: { color: "#c2410c" },
+  deleted: { color: "#c2410c" },
+  selector: { color: "#a16207" }, // oklch(0.681 0.162 75.834)
+  "attr-name": { color: "#a16207" },
+  string: { color: "#a16207" },
+  char: { color: "#a16207" },
+  builtin: { color: "#a16207" },
+  inserted: { color: "#a16207" },
+  operator: { color: "#6b5c4d" }, // oklch(0.421 0.095 57.708)
+  entity: { color: "#6b5c4d" },
+  url: { color: "#6b5c4d" },
+  ".language-css .token.string": { color: "#6b5c4d" },
+  ".style .token.string": { color: "#6b5c4d" },
+  atrule: { color: "#eab308" }, // oklch(0.852 0.199 91.936)
+  "attr-value": { color: "#eab308" },
+  keyword: { color: "#eab308" },
+  function: { color: "#92400e" }, // oklch(0.554 0.135 66.442)
+  "class-name": { color: "#92400e" },
+  regex: { color: "#a16207" },
+  important: { color: "#a16207", fontWeight: "bold" },
+  variable: { color: "#6b5c4d" },
 };
 
 export function ExerciseSubmissionCard({ submission, exercise }: ExerciseSubmissionCardProps) {
@@ -162,7 +163,7 @@ export function ExerciseSubmissionCard({ submission, exercise }: ExerciseSubmiss
               fontSize: "0.75rem",
               lineHeight: "1.6",
               padding: "1rem",
-              background: isDark ? undefined : "oklch(0.97 0.001 106.424)",
+              background: isDark ? undefined : "#f7f6f4", // oklch(0.97 0.001 106.424)
             }}
           >
             {displayCode}

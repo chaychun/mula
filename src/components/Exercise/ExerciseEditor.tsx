@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef } from "react";
 import Editor, { OnMount } from "@monaco-editor/react";
 import type * as Monaco from "monaco-editor";
 import { useTheme } from "@/components/theme-provider";
@@ -50,15 +50,9 @@ export default function ExerciseEditor({
     editorRef.current = editor;
   };
 
-  // Update editor value when code prop changes
-  useEffect(() => {
-    if (editorRef.current) {
-      const currentValue = editorRef.current.getValue();
-      if (currentValue !== code) {
-        editorRef.current.setValue(code);
-      }
-    }
-  }, [code]);
+  // Note: We rely on Monaco's controlled `value` prop for external updates.
+  // The @monaco-editor/react library handles value changes automatically.
+  // We don't use a useEffect with setValue() because it resets cursor position.
 
   const monacoLanguage = languageMap[language.toLowerCase()] || "plaintext";
 

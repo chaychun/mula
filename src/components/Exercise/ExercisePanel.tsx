@@ -58,10 +58,11 @@ export default function ExercisePanel({
 
   const handleSubmit = () => {
     setIsPending(true);
+    // Store timeout ref BEFORE calling onSubmit to ensure cleanup can happen
+    // even if onSubmit triggers a synchronous unmount
+    const timeoutId = setTimeout(() => setIsPending(false), 1000);
+    pendingTimeoutRef.current = timeoutId;
     onSubmit(code);
-    // Reset pending state after a delay (will be cleared when exercise becomes inactive)
-    // Store ref so we can clear on unmount
-    pendingTimeoutRef.current = setTimeout(() => setIsPending(false), 1000);
   };
 
   const handleReset = () => {

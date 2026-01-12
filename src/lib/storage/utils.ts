@@ -3,11 +3,21 @@ import * as path from "path";
 
 // Lock queue implementation to prevent concurrent writes
 // Uses a queue pattern to avoid race conditions between check and acquire
-const fileLockQueues = new Map<string, Promise<void>>();
+interface LockEntry {
+  promise: Promise<void>;
+  release: () => void;
+  timeoutId: ReturnType<typeof setTimeout>;
+}
+const fileLockQueues = new Map<string, LockEntry>();
+
+// Lock timeout - if a lock is held longer than this, it's automatically released
+// to prevent deadlocks from unhandled exceptions
+const LOCK_TIMEOUT_MS = 30000;
 
 async function acquireLock(filePath: string): Promise<() => void> {
-  // Get the current lock promise (or resolved if none)
-  const currentLock = fileLockQueues.get(filePath) ?? Promise.resolve();
+  // Get the current lock entry (or create a resolved one if none)
+  const currentEntry = fileLockQueues.get(filePath);
+  const currentLock = currentEntry?.promise ?? Promise.resolve();
 
   // Create a new lock that will be released when the caller is done
   let releaseLock: () => void;
@@ -15,20 +25,43 @@ async function acquireLock(filePath: string): Promise<() => void> {
     releaseLock = resolve;
   });
 
-  // Chain our lock after the current one - this is atomic since we set
-  // the new lock before awaiting the old one
-  fileLockQueues.set(filePath, newLock);
+  // Track whether this lock has been released
+  let released = false;
 
-  // Wait for the previous lock to be released
-  await currentLock;
+  // Set up automatic timeout release to prevent deadlocks
+  const timeoutId = setTimeout(() => {
+    if (!released) {
+      console.warn(`[storage] Lock timeout for ${filePath}, auto-releasing to prevent deadlock`);
+      doRelease();
+    }
+  }, LOCK_TIMEOUT_MS);
 
-  return () => {
+  const doRelease = () => {
+    if (released) return; // Prevent double-release
+    released = true;
+    clearTimeout(timeoutId);
     // Clean up the queue if this is the last lock
-    if (fileLockQueues.get(filePath) === newLock) {
+    if (fileLockQueues.get(filePath)?.promise === newLock) {
       fileLockQueues.delete(filePath);
     }
     releaseLock!();
   };
+
+  // Create the lock entry
+  const newEntry: LockEntry = {
+    promise: newLock,
+    release: doRelease,
+    timeoutId,
+  };
+
+  // Chain our lock after the current one - this is atomic since we set
+  // the new lock before awaiting the old one
+  fileLockQueues.set(filePath, newEntry);
+
+  // Wait for the previous lock to be released
+  await currentLock;
+
+  return doRelease;
 }
 
 // Get the data path from environment or use default
