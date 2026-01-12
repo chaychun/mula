@@ -44,6 +44,7 @@ export default function SessionPage({ params }: PageProps) {
     sendMessage,
     loadMessages,
     activeExercise,
+    setActiveExercise,
     submitExercise,
     skipExercise,
   } = useChat({
@@ -75,6 +76,16 @@ export default function SessionPage({ params }: PageProps) {
       }
     }
   }, [currentSession, loadMessages]);
+
+  // Restore active exercise when session loads
+  useEffect(() => {
+    if (currentSession?.activeExerciseId && currentSession.exercises) {
+      const exercise = currentSession.exercises[currentSession.activeExerciseId];
+      if (exercise && (exercise.status === "active" || exercise.status === "pending_review")) {
+        setActiveExercise(exercise);
+      }
+    }
+  }, [currentSession?.activeExerciseId, currentSession?.exercises, setActiveExercise]);
 
   // Navigation handlers
   const handleSelectProject = useCallback(
