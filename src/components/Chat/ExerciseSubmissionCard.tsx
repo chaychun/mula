@@ -8,7 +8,7 @@ import { useTheme } from "@/components/theme-provider";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Check, Ban, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import { Check, Prohibit, Clock, CaretDown, CaretUp } from "@phosphor-icons/react";
 
 interface ExerciseSubmissionCardProps {
   submission: ExerciseSubmission;
@@ -107,7 +107,7 @@ export function ExerciseSubmissionCard({ submission, exercise }: ExerciseSubmiss
             variant="secondary"
             className="bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300"
           >
-            <Ban className="w-3 h-3 mr-1" />
+            <Prohibit className="w-3 h-3 mr-1" />
             Skipped
           </Badge>
         );
@@ -176,12 +176,12 @@ export function ExerciseSubmissionCard({ submission, exercise }: ExerciseSubmiss
           >
             {isExpanded ? (
               <>
-                <ChevronUp className="w-3 h-3 mr-1" />
+                <CaretUp className="w-3 h-3 mr-1" />
                 Show less
               </>
             ) : (
               <>
-                <ChevronDown className="w-3 h-3 mr-1" />
+                <CaretDown className="w-3 h-3 mr-1" />
                 Show more ({codeLines.length - 10} more lines)
               </>
             )}

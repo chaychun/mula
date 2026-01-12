@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { CaretDown, CaretRight } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 
 interface ExerciseHeaderProps {
@@ -23,9 +23,9 @@ export default function ExerciseHeader({
       onClick={onToggle}
     >
       {isCollapsed ? (
-        <ChevronRight className="size-4 shrink-0" />
+        <CaretRight className="size-4 shrink-0" />
       ) : (
-        <ChevronDown className="size-4 shrink-0" />
+        <CaretDown className="size-4 shrink-0" />
       )}
       <span className="font-semibold text-sm flex-1 text-left">{title}</span>
       <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-sm">
