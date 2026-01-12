@@ -65,22 +65,23 @@ export default function SessionPage({ params }: PageProps) {
   }, [projectId, fetchSessions]);
 
   // Load session data when sessionId changes
+  // Note: We use selectSession directly and load messages from the returned session,
+  // NOT from currentSession state, to avoid re-loading messages when only the title updates
   useEffect(() => {
-    selectSession(projectId, sessionId);
-  }, [projectId, sessionId, selectSession]);
-
-  // Load session messages and exercises when currentSession is available
-  useEffect(() => {
-    if (currentSession) {
-      loadMessages(currentSession.messages);
-      if (currentSession.exercises) {
-        setExercises(currentSession.exercises);
+    const loadSessionData = async () => {
+      const session = await selectSession(projectId, sessionId);
+      if (session) {
+        loadMessages(session.messages);
+        if (session.exercises) {
+          setExercises(session.exercises);
+        }
+        if (session.agentSessionId) {
+          setAgentSessionId(session.agentSessionId);
+        }
       }
-      if (currentSession.agentSessionId) {
-        setAgentSessionId(currentSession.agentSessionId);
-      }
-    }
-  }, [currentSession, loadMessages, setExercises]);
+    };
+    loadSessionData();
+  }, [projectId, sessionId, selectSession, loadMessages, setExercises]);
 
   // Restore active exercise when session loads
   useEffect(() => {
