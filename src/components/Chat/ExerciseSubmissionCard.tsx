@@ -228,53 +228,56 @@ export function ExerciseSubmissionCard({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="pt-0">
-        <div className="ring-1 ring-border overflow-hidden">
-          {language && (
-            <div className="bg-muted/80 text-muted-foreground text-[10px] font-medium uppercase tracking-wider px-3 py-1.5 border-b border-border">
-              {language}
-            </div>
-          )}
-          <SyntaxHighlighter
-            style={isDark ? oneDark : lightTheme}
-            language={language || "text"}
-            PreTag="div"
-            codeTagProps={{
-              style: { borderRadius: 0 },
-            }}
-            customStyle={{
-              margin: 0,
-              borderRadius: 0,
-              fontSize: "0.75rem",
-              lineHeight: "1.6",
-              padding: "1rem",
-              background: isDark ? undefined : "#f7f6f4", // oklch(0.97 0.001 106.424)
-            }}
-          >
-            {displayCode}
-          </SyntaxHighlighter>
-        </div>
-        {shouldCollapse && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="w-full mt-2 text-xs"
-          >
-            {isExpanded ? (
-              <>
-                <CaretUp className="w-3 h-3 mr-1" />
-                Show less
-              </>
-            ) : (
-              <>
-                <CaretDown className="w-3 h-3 mr-1" />
-                Show more ({codeLines.length - 10} more lines)
-              </>
+      {/* Hide code section for skipped exercises (no code was submitted) */}
+      {displayStatus !== "skipped" && submission.code && (
+        <CardContent className="pt-0">
+          <div className="ring-1 ring-border overflow-hidden">
+            {language && (
+              <div className="bg-muted/80 text-muted-foreground text-[10px] font-medium uppercase tracking-wider px-3 py-1.5 border-b border-border">
+                {language}
+              </div>
             )}
-          </Button>
-        )}
-      </CardContent>
+            <SyntaxHighlighter
+              style={isDark ? oneDark : lightTheme}
+              language={language || "text"}
+              PreTag="div"
+              codeTagProps={{
+                style: { borderRadius: 0 },
+              }}
+              customStyle={{
+                margin: 0,
+                borderRadius: 0,
+                fontSize: "0.75rem",
+                lineHeight: "1.6",
+                padding: "1rem",
+                background: isDark ? undefined : "#f7f6f4", // oklch(0.97 0.001 106.424)
+              }}
+            >
+              {displayCode}
+            </SyntaxHighlighter>
+          </div>
+          {shouldCollapse && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="w-full mt-2 text-xs"
+            >
+              {isExpanded ? (
+                <>
+                  <CaretUp className="w-3 h-3 mr-1" />
+                  Show less
+                </>
+              ) : (
+                <>
+                  <CaretDown className="w-3 h-3 mr-1" />
+                  Show more ({codeLines.length - 10} more lines)
+                </>
+              )}
+            </Button>
+          )}
+        </CardContent>
+      )}
     </Card>
   );
 }

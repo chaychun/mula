@@ -10,7 +10,7 @@ interface ChatRequest {
   projectId: string;
   sessionId: string;
   resumeSessionId?: string;
-  action: "message" | "submit" | "hint";
+  action: "message" | "submit" | "hint" | "skip";
   editorCode?: string;
 }
 
@@ -37,6 +37,9 @@ ${editorCode}
 \`\`\`
 
 Provide a helpful hint that guides them toward the solution without giving away the answer. Focus on the concept they might be missing or a small nudge in the right direction.`;
+  } else if (action === "skip") {
+    // For skip action, pass the message through as-is (it contains the skip notification)
+    promptText = message;
   } else {
     promptText = message;
   }
