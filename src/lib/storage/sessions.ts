@@ -1,5 +1,5 @@
 import * as path from "path";
-import type { Session, Message, ExerciseRecord } from "../types";
+import type { Session, Message, Exercise, ExerciseAttempt } from "../types";
 import { getDataPath, readJsonFile, writeJsonFile, listFiles, generateId } from "./utils";
 
 // Get sessions directory for a project
@@ -25,7 +25,8 @@ export async function createSession(projectId: string, title?: string): Promise<
     topics: [],
     title: title || "Untitled Session",
     messages: [],
-    exercises: [],
+    exercises: {},
+    activeExerciseId: null,
     status: "active",
   };
 
@@ -35,7 +36,20 @@ export async function createSession(projectId: string, title?: string): Promise<
 
 // Get a session by ID
 export async function getSession(projectId: string, sessionId: string): Promise<Session | null> {
-  return readJsonFile<Session>(getSessionFilePath(projectId, sessionId));
+  const session = await readJsonFile<Session>(getSessionFilePath(projectId, sessionId));
+  if (!session) return null;
+
+  // Migration: convert old exercises array to Record format
+  if (Array.isArray(session.exercises)) {
+    session.exercises = {};
+  }
+
+  // Migration: add activeExerciseId if missing
+  if (session.activeExerciseId === undefined) {
+    session.activeExerciseId = null;
+  }
+
+  return session;
 }
 
 // Update a session
@@ -81,49 +95,82 @@ export async function addMessageToSession(
   return message;
 }
 
-// Add an exercise record to a session
+// Add an exercise to a session
 export async function addExerciseToSession(
   projectId: string,
   sessionId: string,
-  title: string
-): Promise<ExerciseRecord | null> {
+  exercise: Exercise
+): Promise<void> {
   const session = await getSession(projectId, sessionId);
-  if (!session) return null;
+  if (!session) return;
 
-  const exercise: ExerciseRecord = {
-    id: generateId(),
-    title,
-    submitted: false,
-  };
-
-  session.exercises.push(exercise);
+  session.exercises[exercise.id] = exercise;
   session.updatedAt = new Date().toISOString();
 
   await writeJsonFile(getSessionFilePath(projectId, sessionId), session);
-  return exercise;
 }
 
-// Update an exercise record
+// Update an exercise in a session
 export async function updateExerciseInSession(
   projectId: string,
   sessionId: string,
   exerciseId: string,
-  updates: Partial<Omit<ExerciseRecord, "id">>
-): Promise<ExerciseRecord | null> {
+  updates: Partial<Exercise>
+): Promise<void> {
   const session = await getSession(projectId, sessionId);
-  if (!session) return null;
+  if (!session) return;
 
-  const exerciseIndex = session.exercises.findIndex((e) => e.id === exerciseId);
-  if (exerciseIndex === -1) return null;
+  const existingExercise = session.exercises[exerciseId];
+  if (existingExercise) {
+    // Update existing exercise
+    session.exercises[exerciseId] = {
+      ...existingExercise,
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+  } else {
+    // Create new exercise if it doesn't exist (should not happen normally)
+    session.exercises[exerciseId] = updates as Exercise;
+  }
 
-  session.exercises[exerciseIndex] = {
-    ...session.exercises[exerciseIndex],
-    ...updates,
-  };
   session.updatedAt = new Date().toISOString();
 
   await writeJsonFile(getSessionFilePath(projectId, sessionId), session);
-  return session.exercises[exerciseIndex];
+}
+
+// Set the active exercise ID
+export async function setActiveExerciseId(
+  projectId: string,
+  sessionId: string,
+  exerciseId: string | null
+): Promise<void> {
+  const session = await getSession(projectId, sessionId);
+  if (!session) return;
+
+  session.activeExerciseId = exerciseId;
+  session.updatedAt = new Date().toISOString();
+
+  await writeJsonFile(getSessionFilePath(projectId, sessionId), session);
+}
+
+// Add an attempt to an exercise
+export async function addExerciseAttempt(
+  projectId: string,
+  sessionId: string,
+  exerciseId: string,
+  attempt: ExerciseAttempt
+): Promise<void> {
+  const session = await getSession(projectId, sessionId);
+  if (!session) return;
+
+  const exercise = session.exercises[exerciseId];
+  if (!exercise) return;
+
+  exercise.attempts.push(attempt);
+  exercise.updatedAt = new Date().toISOString();
+  session.updatedAt = new Date().toISOString();
+
+  await writeJsonFile(getSessionFilePath(projectId, sessionId), session);
 }
 
 // Set agent session ID for resumption

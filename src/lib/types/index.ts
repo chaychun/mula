@@ -17,7 +17,8 @@ export interface Session {
   topics: string[];
   title: string;
   messages: Message[];
-  exercises: ExerciseRecord[];
+  exercises: Record<string, Exercise>; // Keyed by exercise ID
+  activeExerciseId: string | null; // Currently active exercise
   status: "active" | "completed";
   wrapUpSummary?: string;
 }
@@ -32,7 +33,8 @@ export interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: string;
-  exercise?: Exercise; // If this message contains an exercise
+  exercise?: Exercise; // If this message contains an exercise (legacy)
+  exerciseSubmission?: ExerciseSubmission; // Exercise submission in message
   toolCalls?: ToolCall[]; // Tool calls made during this message (legacy)
   contentBlocks?: ContentBlock[]; // Interleaved content blocks (new)
 }
@@ -45,14 +47,40 @@ export interface ExerciseRecord {
   passed?: boolean;
 }
 
+// Exercise status type (MVP subset)
+export type ExerciseStatus = "active" | "pending_review" | "passed" | "skipped";
+
+// Exercise attempt
+export interface ExerciseAttempt {
+  id: string;
+  code: string;
+  submittedAt: string;
+  feedback?: string;
+  result?: "correct" | "partial" | "incorrect";
+}
+
 // Exercise types
 export interface Exercise {
-  type: "exercise";
+  id: string;
   title: string;
   language: string;
   instructions: string;
   starterCode: string;
   expectedBehavior: string;
+  status: ExerciseStatus;
+  attempts: ExerciseAttempt[];
+  hints: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Exercise submission in messages
+export interface ExerciseSubmission {
+  exerciseId: string;
+  attemptId: string;
+  code: string;
+  title: string;
+  instructions: string;
 }
 
 // Tool call types
