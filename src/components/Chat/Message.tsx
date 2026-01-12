@@ -29,9 +29,10 @@ function getExerciseIdFromToolCall(toolCall: ToolCall): string | null {
 interface ChatMessageProps {
   message: Message;
   exercises?: Record<string, Exercise>;
+  onRetry?: (exerciseId: string, code: string) => void;
 }
 
-export default function ChatMessage({ message, exercises }: ChatMessageProps) {
+export default function ChatMessage({ message, exercises, onRetry }: ChatMessageProps) {
   const isUser = message.role === "user";
 
   // For user messages with exercise submission, render ExerciseSubmissionCard
@@ -40,7 +41,11 @@ export default function ChatMessage({ message, exercises }: ChatMessageProps) {
     return (
       <div className="flex justify-end">
         <div className="max-w-[85%]">
-          <ExerciseSubmissionCard submission={message.exerciseSubmission} exercise={exercise} />
+          <ExerciseSubmissionCard
+            submission={message.exerciseSubmission}
+            exercise={exercise}
+            onRetry={onRetry}
+          />
         </div>
       </div>
     );

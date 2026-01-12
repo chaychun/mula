@@ -34,15 +34,9 @@ interface ExerciseEditorProps {
   code: string;
   language: string;
   onChange: (code: string) => void;
-  disabled?: boolean;
 }
 
-export default function ExerciseEditor({
-  code,
-  language,
-  onChange,
-  disabled = false,
-}: ExerciseEditorProps) {
+export default function ExerciseEditor({ code, language, onChange }: ExerciseEditorProps) {
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
   const { resolvedTheme } = useTheme();
 
@@ -73,7 +67,6 @@ export default function ExerciseEditor({
           scrollBeyondLastLine: false,
           wordWrap: "on",
           padding: { top: 8, bottom: 8 },
-          readOnly: disabled,
           scrollbar: {
             vertical: "auto",
             horizontal: "auto",

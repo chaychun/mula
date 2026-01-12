@@ -49,6 +49,7 @@ export default function SessionPage({ params }: PageProps) {
     setExercises,
     submitExercise,
     skipExercise,
+    retryExercise,
   } = useChat({
     projectId,
     sessionId,
@@ -84,10 +85,16 @@ export default function SessionPage({ params }: PageProps) {
   }, [projectId, sessionId, selectSession, loadMessages, setExercises, setAgentSessionId]);
 
   // Restore active exercise when session loads
+  // Include needs_retry status since the user should be able to retry immediately
   useEffect(() => {
     if (currentSession?.activeExerciseId && currentSession.exercises) {
       const exercise = currentSession.exercises[currentSession.activeExerciseId];
-      if (exercise && (exercise.status === "active" || exercise.status === "pending_review")) {
+      if (
+        exercise &&
+        (exercise.status === "active" ||
+          exercise.status === "pending_review" ||
+          exercise.status === "needs_retry")
+      ) {
         setActiveExercise(exercise);
       }
     }
@@ -192,6 +199,7 @@ export default function SessionPage({ params }: PageProps) {
             onExerciseSubmit={submitExercise}
             onExerciseSkip={skipExercise}
             onExerciseReset={() => {}}
+            onExerciseRetry={retryExercise}
           />
         )}
       </SidebarInset>

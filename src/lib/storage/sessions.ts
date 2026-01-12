@@ -222,6 +222,48 @@ export async function addExerciseAttempt(
   });
 }
 
+// Submit an exercise attempt - adds attempt and updates exercise status to pending_review (atomic)
+export async function submitExerciseAttempt(
+  projectId: string,
+  sessionId: string,
+  exerciseId: string,
+  attemptId: string,
+  code: string
+): Promise<ExerciseAttempt | null> {
+  const filePath = getSessionFilePath(projectId, sessionId);
+  let createdAttempt: ExerciseAttempt | null = null;
+
+  await updateJsonFile<Session>(filePath, (session) => {
+    if (!session) return null;
+
+    // Apply migrations
+    if (Array.isArray(session.exercises)) {
+      session.exercises = {};
+    }
+
+    const exercise = session.exercises[exerciseId];
+    if (!exercise) return session;
+
+    // Create the attempt
+    const attempt: ExerciseAttempt = {
+      id: attemptId,
+      code,
+      submittedAt: new Date().toISOString(),
+      status: "pending_review",
+    };
+
+    exercise.attempts.push(attempt);
+    exercise.status = "pending_review";
+    exercise.updatedAt = new Date().toISOString();
+    session.updatedAt = new Date().toISOString();
+
+    createdAttempt = attempt;
+    return session;
+  });
+
+  return createdAttempt;
+}
+
 // Set agent session ID for resumption
 export async function setAgentSessionId(
   projectId: string,

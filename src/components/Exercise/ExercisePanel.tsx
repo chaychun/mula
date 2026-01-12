@@ -75,6 +75,7 @@ export default function ExercisePanel({
       <ExerciseHeader
         title={exercise.title}
         language={exercise.language}
+        status={exercise.status}
         isCollapsed={isCollapsed}
         onToggle={() => setIsCollapsed(!isCollapsed)}
       />
@@ -82,12 +83,7 @@ export default function ExercisePanel({
       {!isCollapsed && (
         <div className="animate-in slide-in-from-top-2 duration-200">
           <ExerciseInstructions instructions={exercise.instructions} hints={exercise.hints} />
-          <ExerciseEditor
-            code={code}
-            language={exercise.language}
-            onChange={setCode}
-            disabled={disabled}
-          />
+          <ExerciseEditor code={code} language={exercise.language} onChange={setCode} />
           <ExerciseActions
             onSubmit={handleSubmit}
             onSkip={onSkip}

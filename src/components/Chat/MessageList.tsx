@@ -11,6 +11,7 @@ interface MessageListProps {
   streamingToolCalls: ToolCall[];
   streamingContentBlocks: ContentBlock[];
   isStreaming: boolean;
+  onExerciseRetry?: (exerciseId: string, code: string) => void;
 }
 
 export default function MessageList({
@@ -20,12 +21,13 @@ export default function MessageList({
   streamingToolCalls,
   streamingContentBlocks,
   isStreaming,
+  onExerciseRetry,
 }: MessageListProps) {
   return (
     <div className="space-y-4">
       {messages.map((message) => (
         <div key={message.id}>
-          <ChatMessage message={message} exercises={exercises} />
+          <ChatMessage message={message} exercises={exercises} onRetry={onExerciseRetry} />
           {/* Show exercise block if this message has one */}
           {message.exercise && <ExerciseBlock exercise={message.exercise} />}
         </div>

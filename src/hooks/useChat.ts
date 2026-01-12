@@ -128,7 +128,7 @@ export function useChat({
   const sendMessage = useCallback(
     async (
       content: string,
-      action: "message" | "submit" | "hint" = "message",
+      action: "message" | "submit" | "hint" | "skip" = "message",
       exerciseSubmission?: ExerciseSubmission,
       editorCode?: string
     ) => {
@@ -137,8 +137,8 @@ export function useChat({
         return;
       }
 
-      // Add user message immediately (for regular messages and submissions)
-      if (action === "message" || action === "submit") {
+      // Add user message immediately (for regular messages, submissions, and skips)
+      if (action === "message" || action === "submit" || action === "skip") {
         const userMessage: Message = {
           id: generateMessageId(),
           role: "user",
@@ -275,6 +275,13 @@ export function useChat({
                     // Check mounted state before updating state
                     if (exercises && mountedRef.current) {
                       setExercises(exercises);
+
+                      // If the agent marked the exercise as needs_retry, show the exercise block
+                      // so the user can immediately retry without clicking a button
+                      const updatedExercise = exercises[result.exerciseId];
+                      if (updatedExercise && updatedExercise.status === "needs_retry") {
+                        setActiveExercise(updatedExercise);
+                      }
                     }
                   }
                 } catch (e) {
@@ -520,7 +527,7 @@ export function useChat({
   // Submit exercise
   const submitExercise = useCallback(
     async (code: string) => {
-      if (!activeExercise || !sessionId) return;
+      if (!activeExercise || !projectId || !sessionId) return;
 
       // Store exercise context for recovery in case of error
       const exerciseToSubmit = activeExercise;
@@ -549,6 +556,33 @@ ${code}
       setActiveExercise(null);
 
       try {
+        // Add attempt to storage and update exercise status to pending_review
+        const attemptResponse = await fetch(
+          `/api/projects/${projectId}/sessions/${sessionId}/exercises/${exerciseToSubmit.id}/attempts`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ attemptId, code }),
+          }
+        );
+
+        if (attemptResponse.ok) {
+          const attempt = await attemptResponse.json();
+          // Update local exercises state with the new attempt
+          setExercises((prev) => {
+            const exercise = prev[exerciseToSubmit.id];
+            if (!exercise) return prev;
+            return {
+              ...prev,
+              [exerciseToSubmit.id]: {
+                ...exercise,
+                status: "pending_review",
+                attempts: [...exercise.attempts, attempt],
+              },
+            };
+          });
+        }
+
         // Send the message with exercise submission metadata and editor code
         await sendMessage(submissionContent, "submit", exerciseSubmission, code);
       } catch (err) {
@@ -557,19 +591,99 @@ ${code}
         throw err;
       }
     },
-    [activeExercise, sessionId, sendMessage]
+    [activeExercise, projectId, sessionId, sendMessage]
   );
 
-  // Skip exercise
+  // Skip exercise - handles the skip directly without relying on AI to update status
   const skipExercise = useCallback(async () => {
-    if (!activeExercise || !sessionId) return;
+    if (!activeExercise || !sessionId || !projectId) return;
 
-    // Clear active exercise
+    const exerciseToSkip = activeExercise;
+
+    // Clear active exercise immediately for responsive UI
     setActiveExercise(null);
 
-    // Send skip message to AI
-    await sendMessage(`[Skipped exercise: ${activeExercise.title}]`, "message");
-  }, [activeExercise, sessionId, sendMessage]);
+    // Update the exercise status to skipped via API
+    try {
+      const response = await fetch(
+        `/api/projects/${projectId}/sessions/${sessionId}/exercises/${exerciseToSkip.id}/skip`,
+        { method: "POST" }
+      );
+
+      if (!response.ok) {
+        console.error("Failed to skip exercise:", await response.text());
+      }
+    } catch (err) {
+      console.error("Error calling skip API:", err);
+    }
+
+    // Update local exercises state
+    setExercises((prev) => ({
+      ...prev,
+      [exerciseToSkip.id]: {
+        ...prev[exerciseToSkip.id],
+        status: "skipped",
+        updatedAt: new Date().toISOString(),
+      },
+    }));
+
+    // Create exerciseSubmission for the skip card (no code, no attemptId needed)
+    const exerciseSubmission: ExerciseSubmission = {
+      exerciseId: exerciseToSkip.id,
+      attemptId: "", // Empty since no actual submission
+      code: "", // Empty since skipped
+      title: exerciseToSkip.title,
+      instructions: exerciseToSkip.instructions,
+    };
+
+    // Notify AI that the exercise was skipped (status already updated, AI should just acknowledge)
+    // Pass exerciseSubmission so it renders as a card instead of a plain message
+    // Use a clear skip message format so the AI understands no code was submitted intentionally
+    await sendMessage(
+      `[Exercise Skipped]
+Title: ${exerciseToSkip.title}
+
+The student chose to skip this exercise. No code was submitted. The exercise status has been automatically updated to "skipped". Please acknowledge this and offer to help with something else or continue to the next topic.`,
+      "skip",
+      exerciseSubmission
+    );
+  }, [activeExercise, sessionId, projectId, sendMessage]);
+
+  // Retry exercise - reactivates the exercise panel with the previous code
+  const retryExercise = useCallback(
+    async (exerciseId: string, _previousCode: string) => {
+      const exercise = exercises[exerciseId];
+      if (!exercise || !projectId || !sessionId) return;
+
+      // Create copy with active status
+      const retryingExercise: Exercise = {
+        ...exercise,
+        status: "active",
+      };
+
+      // Update local state immediately for responsive UI
+      setActiveExercise(retryingExercise);
+      setExercises((prev) => ({
+        ...prev,
+        [exerciseId]: retryingExercise,
+      }));
+
+      // Persist to server so status survives page refresh
+      try {
+        const response = await fetch(
+          `/api/projects/${projectId}/sessions/${sessionId}/exercises/${exerciseId}/retry`,
+          { method: "POST" }
+        );
+
+        if (!response.ok) {
+          console.error("Failed to retry exercise:", await response.text());
+        }
+      } catch (err) {
+        console.error("Error calling retry API:", err);
+      }
+    },
+    [exercises, projectId, sessionId]
+  );
 
   // Cancel ongoing request
   const cancelRequest = useCallback(() => {
@@ -655,5 +769,6 @@ ${code}
     setExercises,
     submitExercise,
     skipExercise,
+    retryExercise,
   };
 }
