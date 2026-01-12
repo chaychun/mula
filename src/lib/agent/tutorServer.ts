@@ -188,21 +188,15 @@ export const tutorServer = createSdkMcpServer({
     // 4. update_exercise - Update exercise status after assessment
     tool(
       "update_exercise",
-      "Update exercise status after assessing a student's submission. Use this after reviewing submitted code to mark the exercise as passed or provide feedback.",
+      "Update exercise status after assessing a student's submission. Use this after reviewing submitted code to mark the exercise as passed.",
       {
         projectId: z.string().describe("The project ID"),
         sessionId: z.string().describe("The session ID"),
         exerciseId: z.string().describe("The exercise ID to update"),
         status: z.enum(["passed", "skipped"]).optional().describe("New status for the exercise"),
-        attemptFeedback: z
-          .object({
-            result: z.enum(["correct", "partial", "incorrect"]),
-            feedback: z.string(),
-          })
-          .optional()
-          .describe("Feedback for the most recent attempt"),
+        // Note: attemptFeedback parameter removed for MVP - feedback is provided in chat response
       },
-      async ({ projectId, sessionId, exerciseId, status, attemptFeedback: _attemptFeedback }) => {
+      async ({ projectId, sessionId, exerciseId, status }) => {
         const updates: Partial<Exercise> = {
           updatedAt: new Date().toISOString(),
         };
@@ -210,9 +204,6 @@ export const tutorServer = createSdkMcpServer({
         if (status) {
           updates.status = status;
         }
-
-        // Note: _attemptFeedback would update the most recent attempt
-        // For MVP, we just store the status update
 
         await updateExerciseInSession(projectId, sessionId, exerciseId, updates);
 

@@ -59,6 +59,31 @@ export function useChat({
   const titleGeneratedRef = useRef(false);
   const messagesRef = useRef<Message[]>([]);
 
+  // Helper to fetch session with retries (handles race condition where MCP tool
+  // has written to disk but read returns stale data)
+  const fetchSessionWithRetry = useCallback(
+    async (maxAttempts = 3): Promise<Record<string, Exercise> | null> => {
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        if (attempt > 0) {
+          await new Promise((resolve) => setTimeout(resolve, 200 * attempt));
+        }
+
+        const response = await fetch(`/api/projects/${projectId}/sessions/${sessionId}`, {
+          cache: "no-store",
+        });
+
+        if (response.ok) {
+          const session = await response.json();
+          if (session.exercises && Object.keys(session.exercises).length > 0) {
+            return session.exercises;
+          }
+        }
+      }
+      return null;
+    },
+    [projectId, sessionId]
+  );
+
   // Generate a unique message ID
   const generateMessageId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -169,42 +194,19 @@ export function useChat({
                 try {
                   const result = JSON.parse(existingCall.output);
                   if (result.exerciseId) {
-                    // Retry fetching session a few times with delay to handle race condition
-                    // where the MCP tool has written to disk but read returns stale data
-                    let exercise = null;
-                    for (let attempt = 0; attempt < 3; attempt++) {
-                      if (attempt > 0) {
-                        await new Promise((resolve) => setTimeout(resolve, 200 * attempt));
+                    const exercises = await fetchSessionWithRetry();
+                    if (exercises) {
+                      setExercises(exercises);
+                      const exercise = exercises[result.exerciseId];
+                      if (exercise) {
+                        setActiveExercise(exercise);
+                        onExerciseCreated?.(exercise);
+                      } else {
+                        console.warn(
+                          "[useChat] Exercise not found after retries:",
+                          result.exerciseId
+                        );
                       }
-
-                      const response = await fetch(
-                        `/api/projects/${projectId}/sessions/${sessionId}`,
-                        { cache: "no-store" }
-                      );
-
-                      if (response.ok) {
-                        const session = await response.json();
-
-                        // Update the full exercises map
-                        if (session.exercises && Object.keys(session.exercises).length > 0) {
-                          setExercises(session.exercises);
-                        }
-
-                        exercise = session.exercises?.[result.exerciseId];
-
-                        if (exercise) {
-                          setActiveExercise(exercise);
-                          onExerciseCreated?.(exercise);
-                          break;
-                        }
-                      }
-                    }
-
-                    if (!exercise) {
-                      console.warn(
-                        "[useChat] Exercise not found after retries:",
-                        result.exerciseId
-                      );
                     }
                   }
                 } catch (e) {
@@ -224,26 +226,9 @@ export function useChat({
                 try {
                   const result = JSON.parse(existingCall.output);
                   if (result.exerciseId) {
-                    // Fetch updated session to get new exercise status
-                    for (let attempt = 0; attempt < 3; attempt++) {
-                      if (attempt > 0) {
-                        await new Promise((resolve) => setTimeout(resolve, 200 * attempt));
-                      }
-
-                      const response = await fetch(
-                        `/api/projects/${projectId}/sessions/${sessionId}`,
-                        { cache: "no-store" }
-                      );
-
-                      if (response.ok) {
-                        const session = await response.json();
-
-                        // Update the full exercises map to reflect status changes
-                        if (session.exercises && Object.keys(session.exercises).length > 0) {
-                          setExercises(session.exercises);
-                          break;
-                        }
-                      }
+                    const exercises = await fetchSessionWithRetry();
+                    if (exercises) {
+                      setExercises(exercises);
                     }
                   }
                 } catch (e) {
@@ -475,7 +460,15 @@ export function useChat({
         abortControllerRef.current = null;
       }
     },
-    [projectId, sessionId, agentSessionId, onExerciseCreated, onSessionId, onTitleGenerated]
+    [
+      projectId,
+      sessionId,
+      agentSessionId,
+      onExerciseCreated,
+      onSessionId,
+      onTitleGenerated,
+      fetchSessionWithRetry,
+    ]
   );
 
   // Submit exercise

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Exercise } from "@/lib/types";
 import ExerciseHeader from "./ExerciseHeader";
 import ExerciseInstructions from "./ExerciseInstructions";
@@ -31,6 +31,16 @@ export default function ExercisePanel({
     return exercise.starterCode;
   });
   const [isPending, setIsPending] = useState(false);
+  const pendingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clear timeout on unmount to prevent memory leak
+  useEffect(() => {
+    return () => {
+      if (pendingTimeoutRef.current) {
+        clearTimeout(pendingTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Update code when exercise changes
   useEffect(() => {
@@ -45,7 +55,8 @@ export default function ExercisePanel({
     setIsPending(true);
     onSubmit(code);
     // Reset pending state after a delay (will be cleared when exercise becomes inactive)
-    setTimeout(() => setIsPending(false), 1000);
+    // Store ref so we can clear on unmount
+    pendingTimeoutRef.current = setTimeout(() => setIsPending(false), 1000);
   };
 
   const handleReset = () => {

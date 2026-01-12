@@ -49,12 +49,14 @@ export async function getSession(projectId: string, sessionId: string): Promise<
     return null;
   }
 
-  // Migration: convert old exercises array to Record format
+  // In-memory migrations for backward compatibility with old session formats.
+  // These run on every read without write-back by design - this is intentional to:
+  // 1. Avoid write amplification on read-only operations
+  // 2. Allow safe rollback if the new format has issues
+  // 3. Lazily migrate when sessions are actually updated via updateSession()
   if (Array.isArray(session.exercises)) {
     session.exercises = {};
   }
-
-  // Migration: add activeExerciseId if missing
   if (session.activeExerciseId === undefined) {
     session.activeExerciseId = null;
   }

@@ -1,24 +1,32 @@
 import * as fs from "fs/promises";
 import * as path from "path";
 
-// Simple file lock implementation to prevent concurrent writes
-const fileLocks = new Map<string, Promise<void>>();
+// Lock queue implementation to prevent concurrent writes
+// Uses a queue pattern to avoid race conditions between check and acquire
+const fileLockQueues = new Map<string, Promise<void>>();
 
 async function acquireLock(filePath: string): Promise<() => void> {
-  // Wait for any existing lock on this file
-  while (fileLocks.has(filePath)) {
-    await fileLocks.get(filePath);
-  }
+  // Get the current lock promise (or resolved if none)
+  const currentLock = fileLockQueues.get(filePath) ?? Promise.resolve();
 
-  // Create a new lock
+  // Create a new lock that will be released when the caller is done
   let releaseLock: () => void;
-  const lockPromise = new Promise<void>((resolve) => {
+  const newLock = new Promise<void>((resolve) => {
     releaseLock = resolve;
   });
-  fileLocks.set(filePath, lockPromise);
+
+  // Chain our lock after the current one - this is atomic since we set
+  // the new lock before awaiting the old one
+  fileLockQueues.set(filePath, newLock);
+
+  // Wait for the previous lock to be released
+  await currentLock;
 
   return () => {
-    fileLocks.delete(filePath);
+    // Clean up the queue if this is the last lock
+    if (fileLockQueues.get(filePath) === newLock) {
+      fileLockQueues.delete(filePath);
+    }
     releaseLock!();
   };
 }
