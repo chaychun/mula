@@ -51,9 +51,8 @@ export default function MessageInput({
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
-        disabled={disabled}
         rows={1}
-        className="w-full px-4 py-3 text-sm bg-transparent outline-none resize-none placeholder:text-muted-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full px-4 py-3 text-sm bg-transparent outline-none resize-none placeholder:text-muted-foreground"
       />
 
       {/* Action bar */}
