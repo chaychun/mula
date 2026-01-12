@@ -170,7 +170,7 @@ export default function Chat({
 
       {/* Exercise Panel - shows when there's an active exercise */}
       {activeExercise && (
-        <div className="border-t border-border">
+        <div className="px-4">
           <div className="max-w-3xl mx-auto">
             <ExercisePanel
               exercise={activeExercise}

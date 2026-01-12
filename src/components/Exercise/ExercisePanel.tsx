@@ -70,7 +70,7 @@ export default function ExercisePanel({
   };
 
   return (
-    <div className="border border-border rounded-none bg-background overflow-hidden">
+    <div className="ring-1 ring-border bg-background overflow-hidden">
       <ExerciseHeader
         title={exercise.title}
         language={exercise.language}
