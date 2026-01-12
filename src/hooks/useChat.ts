@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import type { Message, Exercise, ToolCall, ContentBlock } from "@/lib/types";
+import type { Message, Exercise, ToolCall, ContentBlock, ExerciseSubmission } from "@/lib/types";
 import { generateTitleFromMessage } from "@/lib/utils/generateTitle";
 
 interface SDKContentBlock {
@@ -34,7 +34,7 @@ interface UseChatOptions {
   projectId: string | null;
   sessionId: string | null;
   agentSessionId?: string;
-  onExercise?: (exercise: Exercise) => void;
+  onExerciseCreated?: (exercise: Exercise) => void;
   onSessionId?: (sessionId: string) => void;
   onTitleGenerated?: (title: string) => void;
 }
@@ -43,7 +43,7 @@ export function useChat({
   projectId,
   sessionId,
   agentSessionId,
-  onExercise,
+  onExerciseCreated,
   onSessionId,
   onTitleGenerated,
 }: UseChatOptions) {
@@ -53,6 +53,7 @@ export function useChat({
   const [streamingToolCalls, setStreamingToolCalls] = useState<ToolCall[]>([]);
   const [streamingContentBlocks, setStreamingContentBlocks] = useState<ContentBlock[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [activeExercise, setActiveExercise] = useState<Exercise | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const titleGeneratedRef = useRef(false);
   const messagesRef = useRef<Message[]>([]);
@@ -65,7 +66,7 @@ export function useChat({
     async (
       content: string,
       action: "message" | "submit" | "hint" = "message",
-      editorCode?: string
+      exerciseSubmission?: ExerciseSubmission
     ) => {
       if (!projectId || !sessionId) {
         setError("No project or session selected");
@@ -79,6 +80,7 @@ export function useChat({
           role: "user",
           content,
           timestamp: new Date().toISOString(),
+          exerciseSubmission,
         };
         messagesRef.current = [...messagesRef.current, userMessage];
         setMessages(messagesRef.current);
@@ -116,7 +118,7 @@ export function useChat({
       };
 
       // Helper function to process tool_result blocks
-      const processToolResult = (block: SDKContentBlock) => {
+      const processToolResult = async (block: SDKContentBlock) => {
         if (block.type === "tool_result" && block.tool_use_id) {
           const existingCall = toolCallMap.get(block.tool_use_id);
           if (existingCall) {
@@ -151,6 +153,31 @@ export function useChat({
               }
             }
             updateContentBlocks();
+
+            // Detect exercise creation from tool call result
+            if (
+              existingCall.name === "mcp__coding-tutor__create_exercise" &&
+              existingCall.status === "completed" &&
+              existingCall.output
+            ) {
+              try {
+                const result = JSON.parse(existingCall.output);
+                if (result.exerciseId) {
+                  // Fetch fresh session to get the exercise
+                  const response = await fetch(`/api/projects/${projectId}/sessions/${sessionId}`);
+                  if (response.ok) {
+                    const session = await response.json();
+                    const exercise = session.exercises?.[result.exerciseId];
+                    if (exercise) {
+                      setActiveExercise(exercise);
+                      onExerciseCreated?.(exercise);
+                    }
+                  }
+                }
+              } catch (e) {
+                console.error("Failed to parse exercise creation result:", e);
+              }
+            }
           }
         }
       };
@@ -165,7 +192,6 @@ export function useChat({
             sessionId,
             resumeSessionId: agentSessionId,
             action,
-            editorCode,
           }),
           signal: abortControllerRef.current.signal,
         });
@@ -181,7 +207,6 @@ export function useChat({
 
         const decoder = new TextDecoder();
         let accumulatedContent = "";
-        let detectedExercise: Exercise | null = null;
 
         while (true) {
           const { done, value } = await reader.read();
@@ -202,17 +227,6 @@ export function useChat({
                 if (sdkMessage.type === "assistant" && sdkMessage.message?.content) {
                   for (const block of sdkMessage.message.content) {
                     if (block.type === "text" && block.text) {
-                      // Check if this is an exercise JSON
-                      try {
-                        const parsed = JSON.parse(block.text);
-                        if (parsed.type === "exercise") {
-                          detectedExercise = parsed as Exercise;
-                          onExercise?.(detectedExercise);
-                          continue;
-                        }
-                      } catch {
-                        // Not JSON, treat as regular text
-                      }
                       accumulatedContent += block.text;
                       setStreamingContent(accumulatedContent);
 
@@ -245,16 +259,10 @@ export function useChat({
                       // Add tool call to content blocks
                       contentBlocksList.push({ type: "tool_call", toolCall });
                       updateContentBlocks();
-
-                      // Special handling for create_exercise
-                      if (block.name.includes("create_exercise") && block.input) {
-                        detectedExercise = block.input as unknown as Exercise;
-                        onExercise?.(detectedExercise);
-                      }
                     }
 
                     // Handle tool_result blocks in assistant messages
-                    processToolResult(block);
+                    await processToolResult(block);
                   }
                 }
 
@@ -266,13 +274,13 @@ export function useChat({
                     (sdkMessage as unknown as SDKContentBlock).type === "tool_result" &&
                     (sdkMessage as unknown as SDKContentBlock).tool_use_id
                   ) {
-                    processToolResult(sdkMessage as unknown as SDKContentBlock);
+                    await processToolResult(sdkMessage as unknown as SDKContentBlock);
                   }
 
                   // Check content array for tool_result blocks
                   if (sdkMessage.message?.content) {
                     for (const block of sdkMessage.message.content) {
-                      processToolResult(block);
+                      await processToolResult(block);
                     }
                   }
                 }
@@ -324,7 +332,6 @@ export function useChat({
             role: "assistant",
             content: accumulatedContent,
             timestamp: new Date().toISOString(),
-            exercise: detectedExercise || undefined,
             toolCalls: finalToolCalls.length > 0 ? finalToolCalls : undefined,
             contentBlocks: contentBlocksList.length > 0 ? contentBlocksList : undefined,
           };
@@ -387,8 +394,53 @@ export function useChat({
         abortControllerRef.current = null;
       }
     },
-    [projectId, sessionId, agentSessionId, onExercise, onSessionId, onTitleGenerated]
+    [projectId, sessionId, agentSessionId, onExerciseCreated, onSessionId, onTitleGenerated]
   );
+
+  // Submit exercise
+  const submitExercise = useCallback(
+    async (code: string) => {
+      if (!activeExercise || !sessionId) return;
+
+      const attemptId = crypto.randomUUID();
+
+      // Create the submission message content for the AI
+      const submissionContent = `[Exercise Submission]
+Title: ${activeExercise.title}
+
+Code:
+\`\`\`${activeExercise.language}
+${code}
+\`\`\``;
+
+      // Create exerciseSubmission for the message
+      const exerciseSubmission: ExerciseSubmission = {
+        exerciseId: activeExercise.id,
+        attemptId,
+        code,
+        title: activeExercise.title,
+        instructions: activeExercise.instructions,
+      };
+
+      // Clear active exercise first (panel disappears)
+      setActiveExercise(null);
+
+      // Send the message with exercise submission metadata
+      await sendMessage(submissionContent, "submit", exerciseSubmission);
+    },
+    [activeExercise, sessionId, sendMessage]
+  );
+
+  // Skip exercise
+  const skipExercise = useCallback(async () => {
+    if (!activeExercise || !sessionId) return;
+
+    // Clear active exercise
+    setActiveExercise(null);
+
+    // Send skip message to AI
+    await sendMessage(`[Skipped exercise: ${activeExercise.title}]`, "message");
+  }, [activeExercise, sessionId, sendMessage]);
 
   // Cancel ongoing request
   const cancelRequest = useCallback(() => {
@@ -468,5 +520,9 @@ export function useChat({
     cancelRequest,
     clearMessages,
     loadMessages,
+    activeExercise,
+    setActiveExercise,
+    submitExercise,
+    skipExercise,
   };
 }
