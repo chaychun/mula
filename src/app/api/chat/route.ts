@@ -58,6 +58,7 @@ Provide a helpful hint that guides them toward the solution without giving away 
               "mcp__coding-tutor__read_progress",
               "mcp__coding-tutor__update_progress",
               "mcp__coding-tutor__create_exercise",
+              "mcp__coding-tutor__update_exercise",
               "mcp__coding-tutor__list_topics",
               "mcp__coding-tutor__wrap_up_session",
               "WebSearch",

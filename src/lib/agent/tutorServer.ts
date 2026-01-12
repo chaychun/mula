@@ -1,6 +1,13 @@
 import { createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
 import * as storage from "../storage";
+import {
+  addExerciseToSession,
+  setActiveExerciseId,
+  updateExerciseInSession,
+} from "../storage/sessions";
+import { generateId } from "../storage/utils";
+import type { Exercise } from "../types";
 
 export const tutorServer = createSdkMcpServer({
   name: "coding-tutor",
@@ -107,6 +114,8 @@ export const tutorServer = createSdkMcpServer({
       "create_exercise",
       "Create a coding exercise for the student. This will populate the code editor with starter code and display the exercise instructions.",
       {
+        projectId: z.string().describe("The project identifier"),
+        sessionId: z.string().describe("The session identifier"),
         title: z.string().describe("The exercise title (e.g., 'Unwrapping Optionals')"),
         language: z
           .string()
@@ -124,28 +133,106 @@ export const tutorServer = createSdkMcpServer({
           ),
       },
       async (args) => {
-        // Return the exercise data as JSON - the UI will handle rendering
-        const exercise = {
-          type: "exercise",
+        // Validate starterCode contains at least one blank marker
+        if (!args.starterCode.includes("___")) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: JSON.stringify({
+                  error: "Starter code must contain at least one blank marker (___)",
+                }),
+              },
+            ],
+          };
+        }
+
+        // Generate unique exercise ID
+        const exerciseId = generateId();
+
+        // Create exercise object
+        const exercise: Exercise = {
+          id: exerciseId,
           title: args.title,
           language: args.language,
           instructions: args.instructions,
           starterCode: args.starterCode,
           expectedBehavior: args.expectedBehavior,
+          status: "active",
+          attempts: [],
+          hints: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         };
+
+        // Persist exercise to session
+        await addExerciseToSession(args.projectId, args.sessionId, exercise);
+
+        // Set as active exercise
+        await setActiveExerciseId(args.projectId, args.sessionId, exerciseId);
 
         return {
           content: [
             {
               type: "text" as const,
-              text: JSON.stringify(exercise),
+              text: JSON.stringify({
+                exerciseId,
+                message: "Exercise created successfully",
+              }),
             },
           ],
         };
       }
     ),
 
-    // 4. list_topics - List all topics with progress
+    // 4. update_exercise - Update exercise status after assessment
+    tool(
+      "update_exercise",
+      "Update exercise status after assessing a student's submission. Use this after reviewing submitted code to mark the exercise as passed or provide feedback.",
+      {
+        projectId: z.string().describe("The project ID"),
+        sessionId: z.string().describe("The session ID"),
+        exerciseId: z.string().describe("The exercise ID to update"),
+        status: z.enum(["passed", "skipped"]).optional().describe("New status for the exercise"),
+        attemptFeedback: z
+          .object({
+            result: z.enum(["correct", "partial", "incorrect"]),
+            feedback: z.string(),
+          })
+          .optional()
+          .describe("Feedback for the most recent attempt"),
+      },
+      async ({ projectId, sessionId, exerciseId, status, attemptFeedback: _attemptFeedback }) => {
+        const updates: Partial<Exercise> = {
+          updatedAt: new Date().toISOString(),
+        };
+
+        if (status) {
+          updates.status = status;
+        }
+
+        // Note: _attemptFeedback would update the most recent attempt
+        // For MVP, we just store the status update
+
+        await updateExerciseInSession(projectId, sessionId, exerciseId, updates);
+
+        // Clear activeExerciseId if terminal status
+        if (status === "passed" || status === "skipped") {
+          await setActiveExerciseId(projectId, sessionId, null);
+        }
+
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify({ exerciseId, message: "Exercise updated successfully" }),
+            },
+          ],
+        };
+      }
+    ),
+
+    // 5. list_topics - List all topics with progress
     tool(
       "list_topics",
       "Get all topics with progress data for the current project. Use this to see what the student has studied before.",
@@ -179,7 +266,7 @@ export const tutorServer = createSdkMcpServer({
       }
     ),
 
-    // 5. wrap_up_session - End session and save summary
+    // 6. wrap_up_session - End session and save summary
     tool(
       "wrap_up_session",
       "End the current tutoring session, save the summary, and mark all relevant progress updates. Call this when the student wants to finish the session.",
