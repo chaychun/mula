@@ -651,9 +651,9 @@ The student chose to skip this exercise. No code was submitted. The exercise sta
 
   // Retry exercise - reactivates the exercise panel with the previous code
   const retryExercise = useCallback(
-    (exerciseId: string, _previousCode: string) => {
+    async (exerciseId: string, _previousCode: string) => {
       const exercise = exercises[exerciseId];
-      if (!exercise) return;
+      if (!exercise || !projectId || !sessionId) return;
 
       // Create copy with active status
       const retryingExercise: Exercise = {
@@ -661,13 +661,28 @@ The student chose to skip this exercise. No code was submitted. The exercise sta
         status: "active",
       };
 
+      // Update local state immediately for responsive UI
       setActiveExercise(retryingExercise);
       setExercises((prev) => ({
         ...prev,
         [exerciseId]: retryingExercise,
       }));
+
+      // Persist to server so status survives page refresh
+      try {
+        const response = await fetch(
+          `/api/projects/${projectId}/sessions/${sessionId}/exercises/${exerciseId}/retry`,
+          { method: "POST" }
+        );
+
+        if (!response.ok) {
+          console.error("Failed to retry exercise:", await response.text());
+        }
+      } catch (err) {
+        console.error("Error calling retry API:", err);
+      }
     },
-    [exercises]
+    [exercises, projectId, sessionId]
   );
 
   // Cancel ongoing request

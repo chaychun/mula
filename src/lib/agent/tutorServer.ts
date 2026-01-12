@@ -215,6 +215,13 @@ export const tutorServer = createSdkMcpServer({
         const sessionResponse = await fetch(
           `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/projects/${projectId}/sessions/${sessionId}`
         );
+        if (!sessionResponse.ok) {
+          console.error(
+            "Failed to fetch session for exercise update:",
+            sessionResponse.status,
+            await sessionResponse.text().catch(() => "")
+          );
+        }
         if (sessionResponse.ok) {
           const session = await sessionResponse.json();
           const currentExercise = session.exercises?.[exerciseId];
