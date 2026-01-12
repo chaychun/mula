@@ -59,13 +59,13 @@ export type ExerciseStatus =
 
 export const MAX_EXERCISE_RETRIES = 3;
 
-// Exercise attempt
+// Exercise attempt - tracks each submission with its evaluated status
 export interface ExerciseAttempt {
   id: string;
   code: string;
   submittedAt: string;
+  status: ExerciseStatus; // Status of this specific attempt (mirrors exercise.status at evaluation time)
   feedback?: string;
-  result?: "correct" | "partial" | "incorrect";
 }
 
 // Exercise types

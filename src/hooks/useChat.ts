@@ -275,6 +275,13 @@ export function useChat({
                     // Check mounted state before updating state
                     if (exercises && mountedRef.current) {
                       setExercises(exercises);
+
+                      // If the agent marked the exercise as needs_retry, show the exercise block
+                      // so the user can immediately retry without clicking a button
+                      const updatedExercise = exercises[result.exerciseId];
+                      if (updatedExercise && updatedExercise.status === "needs_retry") {
+                        setActiveExercise(updatedExercise);
+                      }
                     }
                   }
                 } catch (e) {
@@ -520,7 +527,7 @@ export function useChat({
   // Submit exercise
   const submitExercise = useCallback(
     async (code: string) => {
-      if (!activeExercise || !sessionId) return;
+      if (!activeExercise || !projectId || !sessionId) return;
 
       // Store exercise context for recovery in case of error
       const exerciseToSubmit = activeExercise;
@@ -549,6 +556,33 @@ ${code}
       setActiveExercise(null);
 
       try {
+        // Add attempt to storage and update exercise status to pending_review
+        const attemptResponse = await fetch(
+          `/api/projects/${projectId}/sessions/${sessionId}/exercises/${exerciseToSubmit.id}/attempts`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ attemptId, code }),
+          }
+        );
+
+        if (attemptResponse.ok) {
+          const attempt = await attemptResponse.json();
+          // Update local exercises state with the new attempt
+          setExercises((prev) => {
+            const exercise = prev[exerciseToSubmit.id];
+            if (!exercise) return prev;
+            return {
+              ...prev,
+              [exerciseToSubmit.id]: {
+                ...exercise,
+                status: "pending_review",
+                attempts: [...exercise.attempts, attempt],
+              },
+            };
+          });
+        }
+
         // Send the message with exercise submission metadata and editor code
         await sendMessage(submissionContent, "submit", exerciseSubmission, code);
       } catch (err) {
@@ -557,7 +591,7 @@ ${code}
         throw err;
       }
     },
-    [activeExercise, sessionId, sendMessage]
+    [activeExercise, projectId, sessionId, sendMessage]
   );
 
   // Skip exercise

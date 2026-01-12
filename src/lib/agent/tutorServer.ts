@@ -211,17 +211,29 @@ export const tutorServer = createSdkMcpServer({
           updates.status = status;
         }
 
-        // If hint is provided, we need to append it to the existing hints array
-        // First, get the current exercise to access existing hints
-        if (hint) {
-          const sessionResponse = await fetch(
-            `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/projects/${projectId}/sessions/${sessionId}`
-          );
-          if (sessionResponse.ok) {
-            const session = await sessionResponse.json();
-            const currentExercise = session.exercises?.[exerciseId];
-            if (currentExercise) {
+        // Fetch current exercise to update hints and latest attempt status
+        const sessionResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/projects/${projectId}/sessions/${sessionId}`
+        );
+        if (sessionResponse.ok) {
+          const session = await sessionResponse.json();
+          const currentExercise = session.exercises?.[exerciseId];
+          if (currentExercise) {
+            // Add hint if provided
+            if (hint) {
               updates.hints = [...(currentExercise.hints || []), hint];
+            }
+
+            // Update the latest attempt's status to match the exercise status
+            // This provides per-attempt status tracking for the submission cards
+            if (status && currentExercise.attempts && currentExercise.attempts.length > 0) {
+              const updatedAttempts = [...currentExercise.attempts];
+              const latestAttempt = updatedAttempts[updatedAttempts.length - 1];
+              updatedAttempts[updatedAttempts.length - 1] = {
+                ...latestAttempt,
+                status,
+              };
+              updates.attempts = updatedAttempts;
             }
           }
         }

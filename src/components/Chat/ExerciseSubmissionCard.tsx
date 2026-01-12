@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import type { ExerciseSubmission, Exercise } from "@/lib/types";
+import { useState, useMemo } from "react";
+import type { ExerciseSubmission, Exercise, ExerciseStatus } from "@/lib/types";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useTheme } from "@/components/theme-provider";
@@ -91,9 +91,28 @@ export function ExerciseSubmissionCard({
   const shouldCollapse = codeLines.length > 10;
   const [isExpanded, setIsExpanded] = useState(!shouldCollapse);
 
-  // Determine status badge
+  // Find this attempt in the exercise's attempts array
+  const attemptInfo = useMemo(() => {
+    if (!exercise?.attempts) return null;
+    const attemptIndex = exercise.attempts.findIndex((a) => a.id === submission.attemptId);
+    if (attemptIndex === -1) return null;
+    return {
+      attempt: exercise.attempts[attemptIndex],
+      attemptNumber: attemptIndex + 1,
+      totalAttempts: exercise.attempts.length,
+    };
+  }, [exercise?.attempts, submission.attemptId]);
+
+  // Get status: prefer attempt-level status, fall back to exercise status
+  const displayStatus: ExerciseStatus | undefined =
+    attemptInfo?.attempt?.status ?? exercise?.status;
+
+  // Show attempt badge if there are multiple attempts
+  const showAttemptBadge = attemptInfo && attemptInfo.totalAttempts > 1;
+
+  // Determine status badge based on attempt status (not exercise status)
   const getStatusBadge = () => {
-    if (!exercise) {
+    if (!displayStatus) {
       return (
         <Badge
           variant="secondary"
@@ -105,7 +124,7 @@ export function ExerciseSubmissionCard({
       );
     }
 
-    switch (exercise.status) {
+    switch (displayStatus) {
       case "passed":
         return (
           <Badge
@@ -179,14 +198,25 @@ export function ExerciseSubmissionCard({
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1">
-            <h3 className="font-semibold text-sm">{submission.title}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-sm">{submission.title}</h3>
+              {showAttemptBadge && (
+                <Badge variant="outline" className="text-xs font-normal">
+                  Attempt {attemptInfo.attemptNumber}
+                </Badge>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">
               {truncateInstructions(submission.instructions)}
             </p>
           </div>
           <div className="flex items-center gap-2">
             {getStatusBadge()}
-            {exercise?.status === "needs_retry" && onRetry && (
+            {/* Show retry button for skipped/failed exercises where the user may want to revisit.
+                Don't show for needs_retry since the exercise block is already shown for that.
+                Use exercise.status (not attempt status) to determine if retry should be shown,
+                since we want to allow retry only after the exercise has been finalized. */}
+            {(exercise?.status === "skipped" || exercise?.status === "failed") && onRetry && (
               <Button
                 variant="outline"
                 size="sm"
