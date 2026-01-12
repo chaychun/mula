@@ -571,6 +571,27 @@ ${code}
     await sendMessage(`[Skipped exercise: ${activeExercise.title}]`, "message");
   }, [activeExercise, sessionId, sendMessage]);
 
+  // Retry exercise - reactivates the exercise panel with the previous code
+  const retryExercise = useCallback(
+    (exerciseId: string, _previousCode: string) => {
+      const exercise = exercises[exerciseId];
+      if (!exercise) return;
+
+      // Create copy with active status
+      const retryingExercise: Exercise = {
+        ...exercise,
+        status: "active",
+      };
+
+      setActiveExercise(retryingExercise);
+      setExercises((prev) => ({
+        ...prev,
+        [exerciseId]: retryingExercise,
+      }));
+    },
+    [exercises]
+  );
+
   // Cancel ongoing request
   const cancelRequest = useCallback(() => {
     if (abortControllerRef.current) {
@@ -655,5 +676,6 @@ ${code}
     setExercises,
     submitExercise,
     skipExercise,
+    retryExercise,
   };
 }

@@ -49,6 +49,7 @@ export default function SessionPage({ params }: PageProps) {
     setExercises,
     submitExercise,
     skipExercise,
+    retryExercise,
   } = useChat({
     projectId,
     sessionId,
@@ -192,6 +193,7 @@ export default function SessionPage({ params }: PageProps) {
             onExerciseSubmit={submitExercise}
             onExerciseSkip={skipExercise}
             onExerciseReset={() => {}}
+            onExerciseRetry={retryExercise}
           />
         )}
       </SidebarInset>

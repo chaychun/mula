@@ -188,21 +188,42 @@ export const tutorServer = createSdkMcpServer({
     // 4. update_exercise - Update exercise status after assessment
     tool(
       "update_exercise",
-      "Update exercise status after assessing a student's submission. Use this after reviewing submitted code to mark the exercise as passed.",
+      "Update exercise status after assessing a student's submission. Use this after reviewing submitted code to mark the exercise as passed, needs_retry (with hint), passed_with_feedback, or failed.",
       {
         projectId: z.string().describe("The project ID"),
         sessionId: z.string().describe("The session ID"),
         exerciseId: z.string().describe("The exercise ID to update"),
-        status: z.enum(["passed", "skipped"]).optional().describe("New status for the exercise"),
-        // Note: attemptFeedback parameter removed for MVP - feedback is provided in chat response
+        status: z
+          .enum(["passed", "skipped", "needs_retry", "failed", "passed_with_feedback"])
+          .optional()
+          .describe("New status for the exercise"),
+        hint: z
+          .string()
+          .optional()
+          .describe("Hint to add when requesting a retry (used with needs_retry status)"),
       },
-      async ({ projectId, sessionId, exerciseId, status }) => {
+      async ({ projectId, sessionId, exerciseId, status, hint }) => {
         const updates: Partial<Exercise> = {
           updatedAt: new Date().toISOString(),
         };
 
         if (status) {
           updates.status = status;
+        }
+
+        // If hint is provided, we need to append it to the existing hints array
+        // First, get the current exercise to access existing hints
+        if (hint) {
+          const sessionResponse = await fetch(
+            `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/projects/${projectId}/sessions/${sessionId}`
+          );
+          if (sessionResponse.ok) {
+            const session = await sessionResponse.json();
+            const currentExercise = session.exercises?.[exerciseId];
+            if (currentExercise) {
+              updates.hints = [...(currentExercise.hints || []), hint];
+            }
+          }
         }
 
         const exerciseFound = await updateExerciseInSession(
@@ -227,7 +248,12 @@ export const tutorServer = createSdkMcpServer({
         }
 
         // Clear activeExerciseId if terminal status
-        if (status === "passed" || status === "skipped") {
+        if (
+          status === "passed" ||
+          status === "passed_with_feedback" ||
+          status === "failed" ||
+          status === "skipped"
+        ) {
           await setActiveExerciseId(projectId, sessionId, null);
         }
 

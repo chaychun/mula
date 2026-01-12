@@ -8,11 +8,21 @@ import { useTheme } from "@/components/theme-provider";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Check, Prohibit, Clock, CaretDown, CaretUp } from "@phosphor-icons/react";
+import {
+  Check,
+  Prohibit,
+  Clock,
+  CaretDown,
+  CaretUp,
+  ArrowClockwise,
+  X,
+  Sparkle,
+} from "@phosphor-icons/react";
 
 interface ExerciseSubmissionCardProps {
   submission: ExerciseSubmission;
   exercise?: Exercise; // Linked exercise for status (may be undefined)
+  onRetry?: (exerciseId: string, code: string) => void;
 }
 
 // Custom light theme matching the Lyra stone/yellow palette
@@ -59,7 +69,11 @@ const lightTheme = {
   variable: { color: "#6b5c4d" },
 };
 
-export function ExerciseSubmissionCard({ submission, exercise }: ExerciseSubmissionCardProps) {
+export function ExerciseSubmissionCard({
+  submission,
+  exercise,
+  onRetry,
+}: ExerciseSubmissionCardProps) {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
@@ -123,6 +137,36 @@ export function ExerciseSubmissionCard({ submission, exercise }: ExerciseSubmiss
             Pending
           </Badge>
         );
+      case "needs_retry":
+        return (
+          <Badge
+            variant="secondary"
+            className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300"
+          >
+            <ArrowClockwise className="w-3 h-3 mr-1" />
+            Needs Retry
+          </Badge>
+        );
+      case "failed":
+        return (
+          <Badge
+            variant="secondary"
+            className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+          >
+            <X className="w-3 h-3 mr-1" />
+            Failed
+          </Badge>
+        );
+      case "passed_with_feedback":
+        return (
+          <Badge
+            variant="secondary"
+            className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+          >
+            <Sparkle className="w-3 h-3 mr-1" />
+            Passed
+          </Badge>
+        );
       default:
         return null;
     }
@@ -140,7 +184,19 @@ export function ExerciseSubmissionCard({ submission, exercise }: ExerciseSubmiss
               {truncateInstructions(submission.instructions)}
             </p>
           </div>
-          {getStatusBadge()}
+          <div className="flex items-center gap-2">
+            {getStatusBadge()}
+            {exercise?.status === "needs_retry" && onRetry && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onRetry(submission.exerciseId, submission.code)}
+              >
+                <ArrowClockwise className="w-3 h-3 mr-1" />
+                Retry
+              </Button>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="pt-0">

@@ -86,6 +86,7 @@ interface ChatProps {
   onExerciseSubmit?: (code: string) => void;
   onExerciseSkip?: () => void;
   onExerciseReset?: () => void;
+  onExerciseRetry?: (exerciseId: string, code: string) => void;
   className?: string;
 }
 
@@ -102,6 +103,7 @@ export default function Chat({
   onExerciseSubmit,
   onExerciseSkip,
   onExerciseReset,
+  onExerciseRetry,
   className = "",
 }: ChatProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -162,6 +164,7 @@ export default function Chat({
                 streamingToolCalls={streamingToolCalls}
                 streamingContentBlocks={streamingContentBlocks}
                 isStreaming={isStreaming}
+                onExerciseRetry={onExerciseRetry}
               />
             )}
           </div>

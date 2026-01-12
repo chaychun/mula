@@ -47,8 +47,17 @@ export interface ExerciseRecord {
   passed?: boolean;
 }
 
-// Exercise status type (MVP subset)
-export type ExerciseStatus = "active" | "pending_review" | "passed" | "skipped";
+// Exercise status type
+export type ExerciseStatus =
+  | "active"
+  | "pending_review"
+  | "passed"
+  | "skipped"
+  | "needs_retry"
+  | "failed"
+  | "passed_with_feedback";
+
+export const MAX_EXERCISE_RETRIES = 3;
 
 // Exercise attempt
 export interface ExerciseAttempt {
