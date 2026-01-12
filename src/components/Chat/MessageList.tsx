@@ -6,7 +6,6 @@ import ExerciseBlock from "./ExerciseBlock";
 
 interface MessageListProps {
   messages: Message[];
-  currentExercise: Exercise | null;
   exercises?: Record<string, Exercise>;
   streamingContent: string;
   streamingToolCalls: ToolCall[];
@@ -16,7 +15,6 @@ interface MessageListProps {
 
 export default function MessageList({
   messages,
-  currentExercise,
   exercises,
   streamingContent,
   streamingToolCalls,
@@ -67,11 +65,6 @@ export default function MessageList({
           </div>
           <span className="text-xs">Thinking...</span>
         </div>
-      )}
-
-      {/* Show current exercise after messages */}
-      {currentExercise && !messages.some((m) => m.exercise?.title === currentExercise.title) && (
-        <ExerciseBlock exercise={currentExercise} />
       )}
     </div>
   );

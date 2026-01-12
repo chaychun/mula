@@ -4,11 +4,11 @@ import { useRef, useEffect, useCallback } from "react";
 import type { Message, Exercise, ToolCall, ContentBlock } from "@/lib/types";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
+import ExercisePanel from "@/components/Exercise/ExercisePanel";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ChatProps {
   messages: Message[];
-  currentExercise: Exercise | null;
   exercises?: Record<string, Exercise>;
   isStreaming: boolean;
   streamingContent: string;
@@ -16,12 +16,15 @@ interface ChatProps {
   streamingContentBlocks: ContentBlock[];
   loading?: boolean;
   onSendMessage: (message: string) => void;
+  activeExercise?: Exercise | null;
+  onExerciseSubmit?: (code: string) => void;
+  onExerciseSkip?: () => void;
+  onExerciseReset?: () => void;
   className?: string;
 }
 
 export default function Chat({
   messages,
-  currentExercise,
   exercises,
   isStreaming,
   streamingContent,
@@ -29,6 +32,10 @@ export default function Chat({
   streamingContentBlocks,
   loading = false,
   onSendMessage,
+  activeExercise,
+  onExerciseSubmit,
+  onExerciseSkip,
+  onExerciseReset,
   className = "",
 }: ChatProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -58,7 +65,7 @@ export default function Chat({
   }, [streamingContent]);
 
   return (
-    <div className={`flex flex-col overflow-hidden ${className}`}>
+    <div className={`flex flex-col h-full overflow-hidden ${className}`}>
       {/* Header */}
       <div className="px-4 py-3 border-b border-border">
         <h2 className="font-semibold">Chat</h2>
@@ -90,7 +97,6 @@ export default function Chat({
           ) : (
             <MessageList
               messages={messages}
-              currentExercise={currentExercise}
               exercises={exercises}
               streamingContent={streamingContent}
               streamingToolCalls={streamingToolCalls}
@@ -101,7 +107,20 @@ export default function Chat({
         </ScrollArea>
       </div>
 
-      {/* Input - wider than message content area */}
+      {/* Exercise Panel - shows when there's an active exercise */}
+      {activeExercise && (
+        <div className="border-t border-border">
+          <ExercisePanel
+            exercise={activeExercise}
+            onSubmit={onExerciseSubmit || (() => {})}
+            onSkip={onExerciseSkip || (() => {})}
+            onReset={onExerciseReset || (() => {})}
+            disabled={isStreaming}
+          />
+        </div>
+      )}
+
+      {/* Input */}
       <div className="px-4 pb-4">
         <MessageInput onSend={onSendMessage} disabled={isStreaming} />
       </div>
