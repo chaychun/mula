@@ -57,7 +57,9 @@ function Tool({ toolCall }: ToolProps) {
       {isExpanded && (
         <div className="border-t border-border">
           <div className="px-3 py-2.5">
-            <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-2">Input</div>
+            <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-2">
+              Input
+            </div>
             <ScrollArea orientation="horizontal" className="bg-muted/50">
               <pre className="p-3 text-xs font-mono whitespace-pre-wrap break-all">
                 {JSON.stringify(toolCall.input, null, 2)}
@@ -67,7 +69,9 @@ function Tool({ toolCall }: ToolProps) {
 
           {toolCall.output && (
             <div className="px-3 py-2.5 border-t border-border">
-              <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-2">Output</div>
+              <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-2">
+                Output
+              </div>
               <ScrollArea orientation="both" className="max-h-48 bg-muted/50">
                 <pre className="p-3 text-xs font-mono whitespace-pre-wrap break-all">
                   {showFullOutput || toolCall.output.length <= OUTPUT_PREVIEW_LIMIT
@@ -93,7 +97,9 @@ function Tool({ toolCall }: ToolProps) {
 
           {toolCall.error && (
             <div className="px-3 py-2.5 border-t border-border bg-destructive/5">
-              <div className="text-[10px] font-medium uppercase tracking-wider text-destructive mb-2">Error</div>
+              <div className="text-[10px] font-medium uppercase tracking-wider text-destructive mb-2">
+                Error
+              </div>
               <p className="text-xs text-destructive">{toolCall.error}</p>
             </div>
           )}

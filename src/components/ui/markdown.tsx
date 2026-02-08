@@ -26,9 +26,13 @@ function extractLanguage(className?: string): string {
 
 const INITIAL_COMPONENTS: Partial<Components> = {
   h1: ({ children }) => <h1 className="text-lg font-semibold mt-6 mb-3 first:mt-0">{children}</h1>,
-  h2: ({ children }) => <h2 className="text-base font-semibold mt-5 mb-2.5 first:mt-0">{children}</h2>,
+  h2: ({ children }) => (
+    <h2 className="text-base font-semibold mt-5 mb-2.5 first:mt-0">{children}</h2>
+  ),
   h3: ({ children }) => <h3 className="text-sm font-semibold mt-4 mb-2 first:mt-0">{children}</h3>,
-  h4: ({ children }) => <h4 className="text-xs font-semibold mt-3 mb-1.5 first:mt-0">{children}</h4>,
+  h4: ({ children }) => (
+    <h4 className="text-xs font-semibold mt-3 mb-1.5 first:mt-0">{children}</h4>
+  ),
   p: ({ children }) => <p className="mb-3 last:mb-0 leading-relaxed">{children}</p>,
   ul: ({ children }) => <ul className="list-disc ml-5 mb-3 space-y-1.5">{children}</ul>,
   ol: ({ children }) => <ol className="list-decimal ml-5 mb-3 space-y-1.5">{children}</ol>,
@@ -105,12 +109,17 @@ const MemoizedMarkdownBlock = memo(
   },
   function propsAreEqual(prevProps, nextProps) {
     return prevProps.content === nextProps.content;
-  },
+  }
 );
 
 MemoizedMarkdownBlock.displayName = "MemoizedMarkdownBlock";
 
-function MarkdownComponent({ children, id, className, components = INITIAL_COMPONENTS }: MarkdownProps) {
+function MarkdownComponent({
+  children,
+  id,
+  className,
+  components = INITIAL_COMPONENTS,
+}: MarkdownProps) {
   const generatedId = useId();
   const blockId = id ?? generatedId;
   const blocks = useMemo(() => parseMarkdownIntoBlocks(children), [children]);
@@ -118,7 +127,11 @@ function MarkdownComponent({ children, id, className, components = INITIAL_COMPO
   return (
     <div className={className}>
       {blocks.map((block, index) => (
-        <MemoizedMarkdownBlock key={`${blockId}-block-${index}`} content={block} components={components} />
+        <MemoizedMarkdownBlock
+          key={`${blockId}-block-${index}`}
+          content={block}
+          components={components}
+        />
       ))}
     </div>
   );

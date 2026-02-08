@@ -58,8 +58,15 @@ export function useChat({
   const abortControllerRef = useRef<AbortController | null>(null);
   const titleGeneratedRef = useRef(false);
   const messagesRef = useRef<Message[]>([]);
+  // Track the latest agentSessionId to avoid stale closure in sendMessage
+  const agentSessionIdRef = useRef<string | undefined>(agentSessionId);
   // Track mounted state to prevent state updates after unmount
   const mountedRef = useRef(true);
+
+  // Keep agentSessionId ref in sync with prop (for when session loads from storage)
+  useEffect(() => {
+    agentSessionIdRef.current = agentSessionId;
+  }, [agentSessionId]);
 
   // Clean up on unmount
   useEffect(() => {
@@ -302,7 +309,7 @@ export function useChat({
             message: content,
             projectId,
             sessionId,
-            resumeSessionId: agentSessionId,
+            resumeSessionId: agentSessionIdRef.current,
             action,
             editorCode,
           }),
@@ -404,6 +411,7 @@ export function useChat({
                   sdkMessage.subtype === "init" &&
                   sdkMessage.session_id
                 ) {
+                  agentSessionIdRef.current = sdkMessage.session_id;
                   onSessionId?.(sdkMessage.session_id);
                 }
 
@@ -464,7 +472,10 @@ export function useChat({
           fetch(`/api/projects/${projectId}/sessions/${sessionId}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ messages: updatedMessages, agentSessionId }),
+            body: JSON.stringify({
+              messages: updatedMessages,
+              agentSessionId: agentSessionIdRef.current,
+            }),
           })
             .then((response) => {
               if (!response.ok) {
@@ -513,15 +524,7 @@ export function useChat({
         abortControllerRef.current = null;
       }
     },
-    [
-      projectId,
-      sessionId,
-      agentSessionId,
-      onExerciseCreated,
-      onSessionId,
-      onTitleGenerated,
-      fetchSessionWithRetry,
-    ]
+    [projectId, sessionId, onExerciseCreated, onSessionId, onTitleGenerated, fetchSessionWithRetry]
   );
 
   // Submit exercise

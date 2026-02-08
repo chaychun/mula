@@ -4,10 +4,7 @@ import type { Message, Exercise, ToolCall, ContentBlock } from "@/lib/types";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
 import ExercisePanel from "@/components/Exercise/ExercisePanel";
-import {
-  ChatContainerRoot,
-  ChatContainerContent,
-} from "@/components/ui/chat-container";
+import { ChatContainerRoot, ChatContainerContent } from "@/components/ui/chat-container";
 import { ScrollButton } from "@/components/ui/scroll-button";
 import { GraduationCap, Code, Lightning, BookOpen } from "@phosphor-icons/react";
 

@@ -45,7 +45,11 @@ export default function MessageList({
       {messages.map((message, index) => (
         <div
           key={message.id}
-          className={index >= animateFromIndex ? "animate-in fade-in slide-in-from-bottom-2 duration-200" : ""}
+          className={
+            index >= animateFromIndex
+              ? "animate-in fade-in slide-in-from-bottom-2 duration-200"
+              : ""
+          }
         >
           <ChatMessage message={message} exercises={exercises} onRetry={onExerciseRetry} />
           {/* Show exercise block if this message has one */}

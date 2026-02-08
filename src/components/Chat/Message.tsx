@@ -38,7 +38,7 @@ export default function ChatMessage({ message, exercises, onRetry }: ChatMessage
   const isStreaming = message.id === "streaming";
 
   // Buffer the raw streaming content for word-by-word reveal
-  const bufferedText = useStreamBuffer(isStreaming ? (message.content || "") : "");
+  const bufferedText = useStreamBuffer(isStreaming ? message.content || "" : "");
 
   // For user messages with exercise submission, render ExerciseSubmissionCard
   if (isUser && message.exerciseSubmission) {
@@ -61,7 +61,7 @@ export default function ChatMessage({ message, exercises, onRetry }: ChatMessage
     // Find last text block index for streaming cursor placement
     const lastTextIndex = message.contentBlocks.reduce(
       (last, block, i) => (block.type === "text" ? i : last),
-      -1,
+      -1
     );
 
     // For streaming: distribute the buffered text across text blocks.
@@ -141,7 +141,9 @@ export default function ChatMessage({ message, exercises, onRetry }: ChatMessage
           {/* Message content with markdown */}
           {(isStreaming ? bufferedText : message.content) && (
             <div className={`text-sm ${isStreaming ? "streaming-cursor" : ""}`}>
-              <Markdown id={message.id}>{isStreaming ? bufferedText : (message.content || "")}</Markdown>
+              <Markdown id={message.id}>
+                {isStreaming ? bufferedText : message.content || ""}
+              </Markdown>
             </div>
           )}
         </div>

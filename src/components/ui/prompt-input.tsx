@@ -80,7 +80,7 @@ function PromptInput({
         className={cn(
           "ring-1 ring-border bg-card cursor-text focus-within:ring-primary/50 transition-all",
           disabled && "cursor-not-allowed opacity-60",
-          className,
+          className
         )}
         {...props}
       >
@@ -94,7 +94,12 @@ export type PromptInputTextareaProps = {
   disableAutosize?: boolean;
 } & React.ComponentProps<"textarea">;
 
-function PromptInputTextarea({ className, onKeyDown, disableAutosize = false, ...props }: PromptInputTextareaProps) {
+function PromptInputTextarea({
+  className,
+  onKeyDown,
+  disableAutosize = false,
+  ...props
+}: PromptInputTextareaProps) {
   const { value, setValue, maxHeight, onSubmit, disabled, textareaRef } = usePromptInput();
 
   const adjustHeight = (el: HTMLTextAreaElement | null) => {
@@ -144,7 +149,7 @@ function PromptInputTextarea({ className, onKeyDown, disableAutosize = false, ..
       onKeyDown={handleKeyDown}
       className={cn(
         "w-full min-h-[44px] resize-none border-none bg-transparent text-sm outline-none px-4 py-3 placeholder:text-muted-foreground",
-        className,
+        className
       )}
       rows={1}
       disabled={disabled}

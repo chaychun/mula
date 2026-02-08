@@ -12,7 +12,12 @@ export type ScrollButtonProps = {
   size?: VariantProps<typeof buttonVariants>["size"];
 } & React.ButtonHTMLAttributes<HTMLButtonElement>;
 
-function ScrollButton({ className, variant = "outline", size = "icon", ...props }: ScrollButtonProps) {
+function ScrollButton({
+  className,
+  variant = "outline",
+  size = "icon",
+  ...props
+}: ScrollButtonProps) {
   const { isAtBottom, scrollToBottom } = useStickToBottomContext();
 
   return (
@@ -21,8 +26,10 @@ function ScrollButton({ className, variant = "outline", size = "icon", ...props 
       size={size}
       className={cn(
         "transition-all duration-150 ease-out",
-        !isAtBottom ? "translate-y-0 scale-100 opacity-100" : "pointer-events-none translate-y-4 scale-95 opacity-0",
-        className,
+        !isAtBottom
+          ? "translate-y-0 scale-100 opacity-100"
+          : "pointer-events-none translate-y-4 scale-95 opacity-0",
+        className
       )}
       onClick={() => scrollToBottom()}
       {...props}

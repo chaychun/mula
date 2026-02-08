@@ -13,7 +13,10 @@ export type CodeBlockProps = {
 function CodeBlock({ children, className, ...props }: CodeBlockProps) {
   return (
     <div
-      className={cn("not-prose flex w-full flex-col overflow-clip ring-1 ring-border bg-card text-card-foreground", className)}
+      className={cn(
+        "not-prose flex w-full flex-col overflow-clip ring-1 ring-border bg-card text-card-foreground",
+        className
+      )}
       {...props}
     >
       {children}
@@ -32,7 +35,7 @@ function CodeBlockHeader({ language, className, ...props }: CodeBlockHeaderProps
     <div
       className={cn(
         "bg-muted/80 text-muted-foreground text-[10px] font-medium uppercase tracking-wider px-3 py-1.5 border-b border-border",
-        className,
+        className
       )}
       {...props}
     >
@@ -69,7 +72,7 @@ function CodeBlockCode({ code, language = "tsx", theme, className, ...props }: C
 
   const classNames = cn(
     "w-full overflow-x-auto text-xs leading-relaxed [&>pre]:px-4 [&>pre]:py-4 [&_pre]:!bg-transparent",
-    className,
+    className
   );
 
   return highlightedHtml ? (
