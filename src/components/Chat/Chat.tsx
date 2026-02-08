@@ -181,7 +181,7 @@ export default function Chat({
 
       {/* Exercise Panel - shows when there's an active exercise */}
       {activeExercise && (
-        <div className="px-4">
+        <div className="px-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
           <div className="max-w-3xl mx-auto">
             <ExercisePanel
               exercise={activeExercise}

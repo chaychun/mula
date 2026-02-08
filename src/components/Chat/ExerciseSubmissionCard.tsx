@@ -172,7 +172,7 @@ export function ExerciseSubmissionCard({
   const displayCode = isExpanded ? submission.code : codeLines.slice(0, 10).join("\n");
 
   return (
-    <Card className="border shadow-none">
+    <Card className="border shadow-none animate-in fade-in slide-in-from-bottom-2 duration-200">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1">

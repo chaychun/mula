@@ -9,7 +9,7 @@ interface ExerciseBlockProps {
 
 export default function ExerciseBlock({ exercise }: ExerciseBlockProps) {
   return (
-    <div className="my-4 ring-1 ring-border overflow-hidden">
+    <div className="my-4 ring-1 ring-border overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
       {/* Header */}
       <div className="bg-primary/10 px-4 py-2 flex items-center justify-between border-b border-border">
         <h3 className="font-semibold text-primary">{exercise.title}</h3>

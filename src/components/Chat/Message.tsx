@@ -5,6 +5,7 @@ import { MarkdownContent } from "./MarkdownContent";
 import { ToolCallBlock } from "./ToolCallBlock";
 import { ExerciseSubmissionCard } from "./ExerciseSubmissionCard";
 import ExerciseBlock from "./ExerciseBlock";
+import { useStreamBuffer } from "@/hooks/useStreamBuffer";
 
 /**
  * Extract exerciseId from a create_exercise tool call output
@@ -34,6 +35,10 @@ interface ChatMessageProps {
 
 export default function ChatMessage({ message, exercises, onRetry }: ChatMessageProps) {
   const isUser = message.role === "user";
+  const isStreaming = message.id === "streaming";
+
+  // Buffer the raw streaming content for word-by-word reveal
+  const bufferedText = useStreamBuffer(isStreaming ? (message.content || "") : "");
 
   // For user messages with exercise submission, render ExerciseSubmissionCard
   if (isUser && message.exerciseSubmission) {
@@ -53,6 +58,17 @@ export default function ChatMessage({ message, exercises, onRetry }: ChatMessage
 
   // Use contentBlocks if available for interleaved rendering
   if (message.contentBlocks && message.contentBlocks.length > 0) {
+    // Find last text block index for streaming cursor placement
+    const lastTextIndex = message.contentBlocks.reduce(
+      (last, block, i) => (block.type === "text" ? i : last),
+      -1,
+    );
+
+    // For streaming: distribute the buffered text across text blocks.
+    // Each finalized text block gets its full length; the last (growing) block
+    // gets whatever the buffer has revealed so far.
+    let charBudget = isStreaming ? bufferedText.length : Infinity;
+
     return (
       <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
         <div
@@ -63,9 +79,25 @@ export default function ChatMessage({ message, exercises, onRetry }: ChatMessage
           <div className="space-y-2">
             {message.contentBlocks.map((block, index) => {
               if (block.type === "text") {
+                const isLastText = index === lastTextIndex;
+
+                let displayText = block.text;
+                if (isStreaming) {
+                  // Take up to blockLength chars from the remaining budget
+                  const take = Math.min(block.text.length, charBudget);
+                  displayText = block.text.slice(0, take);
+                  charBudget -= take;
+                }
+
+                // Don't render empty text blocks during streaming
+                if (isStreaming && !displayText) return null;
+
                 return (
-                  <div key={`text-${index}`} className="text-sm">
-                    <MarkdownContent content={block.text} />
+                  <div
+                    key={`text-${index}`}
+                    className={`text-sm ${isStreaming && isLastText && displayText ? "streaming-cursor" : ""}`}
+                  >
+                    <MarkdownContent content={displayText} />
                   </div>
                 );
               }
@@ -109,9 +141,9 @@ export default function ChatMessage({ message, exercises, onRetry }: ChatMessage
           })}
 
           {/* Message content with markdown */}
-          {message.content && (
-            <div className="text-sm">
-              <MarkdownContent content={message.content} />
+          {(isStreaming ? bufferedText : message.content) && (
+            <div className={`text-sm ${isStreaming ? "streaming-cursor" : ""}`}>
+              <MarkdownContent content={isStreaming ? bufferedText : (message.content || "")} />
             </div>
           )}
         </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useEffect } from "react";
 import type { Message, Exercise, ToolCall, ContentBlock } from "@/lib/types";
 import ChatMessage from "./Message";
 import ExerciseBlock from "./ExerciseBlock";
@@ -23,10 +24,28 @@ export default function MessageList({
   isStreaming,
   onExerciseRetry,
 }: MessageListProps) {
+  const isInitialRender = useRef(true);
+  const prevMessageCount = useRef(messages.length);
+
+  useEffect(() => {
+    // After first render, mark as no longer initial
+    isInitialRender.current = false;
+  }, []);
+
+  // Track previous message count for animation gating
+  const animateFromIndex = isInitialRender.current ? Infinity : prevMessageCount.current;
+
+  useEffect(() => {
+    prevMessageCount.current = messages.length;
+  }, [messages.length]);
+
   return (
     <div className="space-y-4">
-      {messages.map((message) => (
-        <div key={message.id}>
+      {messages.map((message, index) => (
+        <div
+          key={message.id}
+          className={index >= animateFromIndex ? "animate-in fade-in slide-in-from-bottom-2 duration-200" : ""}
+        >
           <ChatMessage message={message} exercises={exercises} onRetry={onExerciseRetry} />
           {/* Show exercise block if this message has one */}
           {message.exercise && <ExerciseBlock exercise={message.exercise} />}
@@ -35,22 +54,24 @@ export default function MessageList({
 
       {/* Show streaming content with interleaved blocks */}
       {(streamingContent || streamingToolCalls.length > 0 || streamingContentBlocks.length > 0) && (
-        <ChatMessage
-          message={{
-            id: "streaming",
-            role: "assistant",
-            content: streamingContent,
-            timestamp: new Date().toISOString(),
-            toolCalls: streamingToolCalls.length > 0 ? streamingToolCalls : undefined,
-            contentBlocks: streamingContentBlocks.length > 0 ? streamingContentBlocks : undefined,
-          }}
-          exercises={exercises}
-        />
+        <div className="animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <ChatMessage
+            message={{
+              id: "streaming",
+              role: "assistant",
+              content: streamingContent,
+              timestamp: new Date().toISOString(),
+              toolCalls: streamingToolCalls.length > 0 ? streamingToolCalls : undefined,
+              contentBlocks: streamingContentBlocks.length > 0 ? streamingContentBlocks : undefined,
+            }}
+            exercises={exercises}
+          />
+        </div>
       )}
 
       {/* Show typing indicator */}
       {isStreaming && !streamingContent && streamingToolCalls.length === 0 && (
-        <div className="flex items-center gap-2 text-muted-foreground">
+        <div className="flex items-center gap-2 text-muted-foreground animate-in fade-in duration-200">
           <div className="flex gap-1">
             <span
               className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce"

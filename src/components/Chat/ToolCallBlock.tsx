@@ -30,13 +30,21 @@ export function ToolCallBlock({ toolCall }: ToolCallBlockProps) {
       return <Spinner size={14} />;
     }
     if (toolCall.status === "completed") {
-      return <Check size={14} weight="bold" className="text-primary" />;
+      return (
+        <span className="animate-in fade-in zoom-in-50 duration-200">
+          <Check size={14} weight="bold" className="text-primary" />
+        </span>
+      );
     }
-    return <X size={14} weight="bold" className="text-destructive" />;
+    return (
+      <span className="animate-in fade-in zoom-in-50 duration-200">
+        <X size={14} weight="bold" className="text-destructive" />
+      </span>
+    );
   };
 
   return (
-    <div className="ring-1 ring-border overflow-hidden bg-card">
+    <div className="ring-1 ring-border overflow-hidden bg-card animate-in fade-in slide-in-from-bottom-1 duration-200">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-muted/50 transition-colors text-left"
