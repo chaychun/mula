@@ -1,5 +1,5 @@
 import * as path from "path";
-import type { Session, Message, Exercise, ExerciseAttempt } from "../types";
+import type { Session, Message, Exercise, ExerciseAttempt, ConceptQuestion } from "../types";
 import {
   getDataPath,
   readJsonFile,
@@ -34,6 +34,7 @@ export async function createSession(projectId: string, title?: string): Promise<
     messages: [],
     exercises: {},
     activeExerciseId: null,
+    conceptQuestions: {},
     status: "active",
   };
 
@@ -60,6 +61,9 @@ export async function getSession(projectId: string, sessionId: string): Promise<
   if (session.activeExerciseId === undefined) {
     session.activeExerciseId = null;
   }
+  if (!session.conceptQuestions) {
+    session.conceptQuestions = {};
+  }
 
   return session;
 }
@@ -81,6 +85,9 @@ export async function updateSession(
     }
     if (session.activeExerciseId === undefined) {
       session.activeExerciseId = null;
+    }
+    if (!session.conceptQuestions) {
+      session.conceptQuestions = {};
     }
 
     return {
@@ -192,6 +199,54 @@ export async function setActiveExerciseId(
     session.updatedAt = new Date().toISOString();
     return session;
   });
+}
+
+// Add a concept question to a session (atomic)
+export async function addConceptQuestionToSession(
+  projectId: string,
+  sessionId: string,
+  question: ConceptQuestion
+): Promise<void> {
+  const filePath = getSessionFilePath(projectId, sessionId);
+
+  await updateJsonFile<Session>(filePath, (session) => {
+    if (!session) return null;
+
+    if (!session.conceptQuestions) {
+      session.conceptQuestions = {};
+    }
+
+    session.conceptQuestions[question.id] = question;
+    session.updatedAt = new Date().toISOString();
+    return session;
+  });
+}
+
+// Answer a concept question (atomic)
+export async function answerConceptQuestion(
+  projectId: string,
+  sessionId: string,
+  questionId: string,
+  selectedOptionIndex: number
+): Promise<ConceptQuestion | null> {
+  const filePath = getSessionFilePath(projectId, sessionId);
+  let answeredQuestion: ConceptQuestion | null = null;
+
+  await updateJsonFile<Session>(filePath, (session) => {
+    if (!session) return null;
+
+    const question = session.conceptQuestions?.[questionId];
+    if (!question) return session;
+
+    question.selectedOptionIndex = selectedOptionIndex;
+    question.status = question.options[selectedOptionIndex].correctness;
+    session.updatedAt = new Date().toISOString();
+
+    answeredQuestion = question;
+    return session;
+  });
+
+  return answeredQuestion;
 }
 
 // Add an attempt to an exercise (atomic)

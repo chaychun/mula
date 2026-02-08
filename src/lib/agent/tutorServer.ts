@@ -5,9 +5,10 @@ import {
   addExerciseToSession,
   setActiveExerciseId,
   updateExerciseInSession,
+  addConceptQuestionToSession,
 } from "../storage/sessions";
 import { generateId } from "../storage/utils";
-import type { Exercise } from "../types";
+import type { Exercise, ConceptQuestion } from "../types";
 
 export const tutorServer = createSdkMcpServer({
   name: "coding-tutor",
@@ -361,6 +362,57 @@ export const tutorServer = createSdkMcpServer({
             ],
           };
         }
+      }
+    ),
+
+    // 7. ask_concept_question - Ask a conceptual multiple-choice question
+    tool(
+      "ask_concept_question",
+      "Ask the student a multiple-choice conceptual question to test their understanding of a concept. The question appears inline in the chat as an interactive card with clickable options. After calling this tool, STOP and wait for the student to answer before continuing.",
+      {
+        projectId: z.string().describe("The project identifier"),
+        sessionId: z.string().describe("The session identifier"),
+        question: z.string().describe("The question text to test conceptual understanding"),
+        options: z
+          .array(
+            z.object({
+              text: z.string().describe("The option text"),
+              correctness: z
+                .enum(["correct", "partial", "incorrect"])
+                .describe(
+                  "How correct this option is: 'correct' for the best answer, 'partial' for partially correct, 'incorrect' for wrong"
+                ),
+            })
+          )
+          .min(2)
+          .max(5)
+          .describe("The answer options (2-5 options)"),
+      },
+      async (args) => {
+        const questionId = generateId();
+
+        const conceptQuestion: ConceptQuestion = {
+          id: questionId,
+          question: args.question,
+          options: args.options,
+          selectedOptionIndex: null,
+          status: "unanswered",
+          createdAt: new Date().toISOString(),
+        };
+
+        await addConceptQuestionToSession(args.projectId, args.sessionId, conceptQuestion);
+
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify({
+                questionId,
+                message: "Concept question created successfully",
+              }),
+            },
+          ],
+        };
       }
     ),
   ],

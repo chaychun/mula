@@ -19,6 +19,7 @@ export interface Session {
   messages: Message[];
   exercises: Record<string, Exercise>; // Keyed by exercise ID
   activeExerciseId: string | null; // Currently active exercise
+  conceptQuestions: Record<string, ConceptQuestion>; // Keyed by question ID
   status: "active" | "completed";
   wrapUpSummary?: string;
 }
@@ -35,6 +36,7 @@ export interface Message {
   timestamp: string;
   exercise?: Exercise; // If this message contains an exercise (legacy)
   exerciseSubmission?: ExerciseSubmission; // Exercise submission in message
+  conceptQuestionAnswer?: ConceptQuestionAnswer; // Concept question answer in message
   toolCalls?: ToolCall[]; // Tool calls made during this message (legacy)
   contentBlocks?: ContentBlock[]; // Interleaved content blocks (new)
 }
@@ -81,6 +83,32 @@ export interface Exercise {
   hints: string[];
   createdAt: string;
   updatedAt: string;
+}
+
+// Concept question types
+export type OptionCorrectness = "correct" | "partial" | "incorrect";
+export type ConceptQuestionStatus = "unanswered" | "correct" | "partial" | "incorrect";
+
+export interface ConceptQuestionOption {
+  text: string;
+  correctness: OptionCorrectness;
+}
+
+export interface ConceptQuestion {
+  id: string;
+  question: string;
+  options: ConceptQuestionOption[];
+  selectedOptionIndex: number | null;
+  status: ConceptQuestionStatus;
+  createdAt: string;
+}
+
+// Concept question answer metadata in messages
+export interface ConceptQuestionAnswer {
+  questionId: string;
+  question: string;
+  selectedOption: string;
+  correctness: OptionCorrectness;
 }
 
 // Exercise submission in messages
