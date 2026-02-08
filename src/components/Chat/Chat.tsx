@@ -22,7 +22,7 @@ const suggestions = [
   {
     icon: BookOpen,
     title: "Data structures",
-    description: "Arrays, trees, and graphs",
+    description: "Arrays, linked lists, and trees",
   },
 ];
 
@@ -35,36 +35,44 @@ function EmptyState({
 }) {
   return (
     <div className="min-h-[calc(100vh-8rem)] flex flex-col items-center justify-center py-12">
-      <div className="flex flex-col items-center gap-6 w-full max-w-xl">
-        {/* Icon */}
-        <div className="p-4 bg-primary/10 text-primary">
-          <GraduationCap size={48} weight="duotone" />
+      <div className="flex flex-col items-center w-full max-w-xl">
+        {/* Icon + Text */}
+        <div className="flex flex-col items-center gap-4">
+          <div className="p-3.5 bg-primary/10 text-primary">
+            <GraduationCap size={36} weight="duotone" />
+          </div>
+
+          <div className="text-center space-y-2">
+            <h2 className="text-xl font-semibold text-foreground">What do you want to learn?</h2>
+            <p className="text-muted-foreground max-w-sm mx-auto">
+              Describe what you&apos;re trying to learn. I&apos;ll teach the concepts and give you
+              hands-on exercises.
+            </p>
+          </div>
         </div>
 
-        {/* Text */}
-        <div className="text-center space-y-2">
-          <h2 className="text-xl font-semibold text-foreground">Ready to learn?</h2>
-          <p className="text-muted-foreground">
-            Ask me anything about programming. I&apos;ll explain concepts and give you exercises to
-            practice.
-          </p>
-        </div>
-
-        {/* Centered Input */}
-        <div className="w-full">
+        {/* Input */}
+        <div className="w-full mb-8 mt-8">
           <MessageInput onSend={onSendMessage} />
         </div>
 
-        {/* Subtle Suggestions */}
-        <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+        {/* Suggestion Chips */}
+        <div className="flex flex-wrap justify-center gap-3 mb-4">
           {suggestions.map((suggestion) => (
             <button
               key={suggestion.title}
               onClick={() => onSuggestionClick(`Teach me ${suggestion.title.toLowerCase()}`)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted border border-transparent hover:border-border"
+              className="flex items-start gap-3 flex-1 min-w-[160px] px-3.5 py-3 text-left border border-border bg-card hover:bg-muted hover:border-muted-foreground/20 transition-colors"
             >
-              <suggestion.icon size={14} weight="bold" />
-              {suggestion.title}
+              <suggestion.icon
+                size={18}
+                weight="duotone"
+                className="text-primary mt-0.5 shrink-0"
+              />
+              <div>
+                <div className="text-sm font-medium text-foreground">{suggestion.title}</div>
+                <div className="text-xs text-muted-foreground">{suggestion.description}</div>
+              </div>
             </button>
           ))}
         </div>

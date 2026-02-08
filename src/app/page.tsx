@@ -1,17 +1,20 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import AppSidebar from "@/components/Sidebar/AppSidebar";
+import CreateProjectModal from "@/components/Sidebar/CreateProjectModal";
 import { SidebarInset } from "@/components/ui/sidebar";
 import { useProjects } from "@/hooks/useProjects";
 import { useSessions } from "@/hooks/useSessions";
 import { Button } from "@/components/ui/button";
+import { GraduationCap, Plus } from "@phosphor-icons/react";
 
 export default function Home() {
   const router = useRouter();
   const { projects, loading: projectsLoading, createProject, updateProject } = useProjects();
   const { sessions, createSession, fetchSessions, updateSession } = useSessions(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleSelectProject = useCallback(
     (projectId: string) => {
@@ -77,16 +80,41 @@ export default function Home() {
 
       {/* Welcome Screen */}
       <SidebarInset className="flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Welcome to Coding Tutor</h2>
-          <p className="text-muted-foreground mb-6">
-            Create a project or select an existing one to start learning.
-          </p>
-          <Button size="lg" onClick={() => handleCreateProject("My First Project")}>
-            Create Your First Project
-          </Button>
+        <div className="flex flex-col items-center text-center max-w-md gap-8">
+          <div className="p-4 bg-primary/10 text-primary">
+            <GraduationCap size={48} weight="duotone" />
+          </div>
+
+          <div className="space-y-3">
+            <h2 className="text-2xl font-bold tracking-tight">
+              Learn to code, one concept at a time
+            </h2>
+            <p className="text-muted-foreground">
+              Your AI tutor explains concepts, writes exercises, and reviews your code — at your
+              pace.
+            </p>
+          </div>
+
+          <div className="flex flex-col items-center gap-3">
+            <Button size="lg" onClick={() => setIsModalOpen(true)}>
+              <Plus size={18} weight="bold" />
+              Start a project
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              or use the sidebar to pick an existing one
+            </p>
+          </div>
         </div>
       </SidebarInset>
+
+      <CreateProjectModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onCreate={(name) => {
+          handleCreateProject(name);
+          setIsModalOpen(false);
+        }}
+      />
     </>
   );
 }
