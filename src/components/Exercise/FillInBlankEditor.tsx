@@ -241,36 +241,46 @@ export default function FillInBlankEditor({
         editor.focus();
       }
 
-      // Tab navigation between blanks using live tracking positions
+      // Tab / Shift+Tab navigation between blanks
+      const jumpToBlank = (ed: Monaco.editor.ICodeEditor, direction: 1 | -1) => {
+        const tracking = trackingCollectionRef.current;
+        if (!tracking) return;
+
+        const pos = ed.getPosition();
+        if (!pos) return;
+
+        let currentIdx = -1;
+        for (let i = 0; i < blankCountRef.current; i++) {
+          const range = tracking.getRange(i);
+          if (range && range.containsPosition(pos)) {
+            currentIdx = i;
+            break;
+          }
+        }
+
+        const count = blankCountRef.current;
+        const nextIdx = (currentIdx + direction + count) % count;
+        const nextRange = tracking.getRange(nextIdx);
+        if (nextRange) {
+          ed.setPosition({
+            lineNumber: nextRange.startLineNumber,
+            column: nextRange.startColumn,
+          });
+        }
+      };
+
       editor.addAction({
         id: "next-blank",
         label: "Jump to next blank",
         keybindings: [monaco.KeyCode.Tab],
-        run: (ed) => {
-          const tracking = trackingCollectionRef.current;
-          if (!tracking) return;
+        run: (ed) => jumpToBlank(ed, 1),
+      });
 
-          const pos = ed.getPosition();
-          if (!pos) return;
-
-          let currentIdx = -1;
-          for (let i = 0; i < blankCountRef.current; i++) {
-            const range = tracking.getRange(i);
-            if (range && range.containsPosition(pos)) {
-              currentIdx = i;
-              break;
-            }
-          }
-
-          const nextIdx = (currentIdx + 1) % blankCountRef.current;
-          const nextRange = tracking.getRange(nextIdx);
-          if (nextRange) {
-            ed.setPosition({
-              lineNumber: nextRange.startLineNumber,
-              column: nextRange.startColumn,
-            });
-          }
-        },
+      editor.addAction({
+        id: "prev-blank",
+        label: "Jump to previous blank",
+        keybindings: [monaco.KeyMod.Shift | monaco.KeyCode.Tab],
+        run: (ed) => jumpToBlank(ed, -1),
       });
 
       // Initial visual update and value extraction
