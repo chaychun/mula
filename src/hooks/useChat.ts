@@ -137,50 +137,6 @@ export function useChat({
     [projectId, sessionId]
   );
 
-  // Fetch full session data (exercises + concept questions)
-  const fetchSessionData = useCallback(
-    async (
-      signal?: AbortSignal
-    ): Promise<{
-      exercises: Record<string, Exercise>;
-      conceptQuestions: Record<string, ConceptQuestion>;
-    } | null> => {
-      for (let attempt = 0; attempt < 3; attempt++) {
-        if (signal?.aborted || !mountedRef.current) return null;
-
-        if (attempt > 0) {
-          await new Promise<void>((resolve, reject) => {
-            const timeoutId = setTimeout(resolve, 200 * attempt);
-            signal?.addEventListener("abort", () => {
-              clearTimeout(timeoutId);
-              reject(new DOMException("Aborted", "AbortError"));
-            });
-          }).catch(() => null);
-          if (signal?.aborted || !mountedRef.current) return null;
-        }
-
-        try {
-          const response = await fetch(`/api/projects/${projectId}/sessions/${sessionId}`, {
-            cache: "no-store",
-            signal,
-          });
-          if (response.ok) {
-            const session = await response.json();
-            return {
-              exercises: session.exercises || {},
-              conceptQuestions: session.conceptQuestions || {},
-            };
-          }
-        } catch (err) {
-          if (err instanceof Error && err.name === "AbortError") return null;
-          throw err;
-        }
-      }
-      return null;
-    },
-    [projectId, sessionId]
-  );
-
   // Generate a unique message ID
   const generateMessageId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -351,27 +307,35 @@ export function useChat({
               pendingExerciseFetches.push(fetchPromise);
             }
 
-            // Detect concept question creation from tool call result
+            // Detect concept question creation — construct from tool call data
+            // (no server fetch needed, input has question/options, output has questionId)
             if (
               existingCall.name === "mcp__coding-tutor__ask_concept_question" &&
               existingCall.status === "completed" &&
               existingCall.output
             ) {
-              const fetchPromise = (async () => {
-                try {
-                  const result = JSON.parse(existingCall.output);
-                  if (result.questionId) {
-                    const data = await fetchSessionData(abortControllerRef.current?.signal);
-                    if (data && mountedRef.current) {
-                      setExercises(data.exercises);
-                      setConceptQuestions(data.conceptQuestions);
-                    }
-                  }
-                } catch (e) {
-                  console.error("Failed to parse concept question result:", e);
+              try {
+                const result = JSON.parse(existingCall.output);
+                const input = existingCall.input as {
+                  question: string;
+                  options: Array<{ text: string; correctness: string }>;
+                };
+                if (result.questionId && input.question && input.options) {
+                  setConceptQuestions((prev) => ({
+                    ...prev,
+                    [result.questionId]: {
+                      id: result.questionId,
+                      question: input.question,
+                      options: input.options as ConceptQuestion["options"],
+                      selectedOptionIndex: null,
+                      status: "unanswered",
+                      createdAt: new Date().toISOString(),
+                    },
+                  }));
                 }
-              })();
-              pendingExerciseFetches.push(fetchPromise);
+              } catch (e) {
+                console.error("Failed to parse concept question result:", e);
+              }
             }
           }
         }
@@ -600,15 +564,7 @@ export function useChat({
         abortControllerRef.current = null;
       }
     },
-    [
-      projectId,
-      sessionId,
-      onExerciseCreated,
-      onSessionId,
-      onTitleGenerated,
-      fetchSessionWithRetry,
-      fetchSessionData,
-    ]
+    [projectId, sessionId, onExerciseCreated, onSessionId, onTitleGenerated, fetchSessionWithRetry]
   );
 
   // Submit exercise

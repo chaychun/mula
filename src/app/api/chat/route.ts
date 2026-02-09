@@ -53,6 +53,12 @@ Provide a helpful hint that guides them toward the solution without giving away 
       try {
         // Query the Claude Agent SDK with string prompt
         // Note: MCP servers work with string prompts too
+        // Track whether to stop after a concept question tool call.
+        // Once the AI calls ask_concept_question, we yield that message and any
+        // intermediate tool result messages, then break before the AI generates
+        // follow-up text — the student needs to answer first.
+        let stopBeforeNextAssistant = false;
+
         for await (const sdkMessage of query({
           prompt: promptText,
           options: {
@@ -76,6 +82,14 @@ Provide a helpful hint that guides them toward the solution without giving away 
             maxTurns: 10,
           },
         })) {
+          const msg = sdkMessage as Record<string, unknown>;
+
+          // After concept question tool is processed, stop before AI generates
+          // follow-up text — the next assistant message would be the unwanted response
+          if (stopBeforeNextAssistant && msg.type === "assistant") {
+            break;
+          }
+
           // Stream each message as an SSE event
           const data = JSON.stringify({
             ...sdkMessage,
@@ -83,6 +97,23 @@ Provide a helpful hint that guides them toward the solution without giving away 
             _meta: { projectId, sessionId },
           });
           controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+
+          // Detect ask_concept_question tool use in assistant messages
+          if (msg.type === "assistant") {
+            const message = msg.message as
+              | { content?: Array<{ type: string; name?: string }> }
+              | undefined;
+            if (message?.content) {
+              for (const block of message.content) {
+                if (
+                  block.type === "tool_use" &&
+                  block.name === "mcp__coding-tutor__ask_concept_question"
+                ) {
+                  stopBeforeNextAssistant = true;
+                }
+              }
+            }
+          }
         }
 
         // Signal completion

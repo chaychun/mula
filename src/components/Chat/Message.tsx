@@ -69,18 +69,10 @@ export default function ChatMessage({
   // Buffer the raw streaming content for word-by-word reveal
   const bufferedText = useStreamBuffer(isStreaming ? message.content || "" : "");
 
-  // For user messages with concept question answer, render a simple answer card
+  // Concept question answers are invisible — the ConceptQuestionBlock itself
+  // shows the selected answer inline, so no separate user bubble is needed.
   if (isUser && message.conceptQuestionAnswer) {
-    const { selectedOption } = message.conceptQuestionAnswer;
-    return (
-      <div className="flex justify-end">
-        <div className="max-w-[85%] px-4 py-2 bg-primary text-primary-foreground">
-          <p className="text-sm">
-            Answered: <span className="font-medium">{selectedOption}</span>
-          </p>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   // For user messages with exercise submission, render ExerciseSubmissionCard

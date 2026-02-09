@@ -62,14 +62,14 @@ export default function ConceptQuestionBlock({
                     {String.fromCharCode(65 + index)}.
                   </span>
                   <span className="flex-1">{option.text}</span>
-                  {isAnswered && option.correctness === "correct" && (
+                  {isAnswered && isSelected && option.correctness === "correct" && (
                     <CheckCircle
                       size={18}
                       weight="fill"
                       className="shrink-0 text-green-600 dark:text-green-400"
                     />
                   )}
-                  {isAnswered && option.correctness === "partial" && (
+                  {isAnswered && isSelected && option.correctness === "partial" && (
                     <WarningCircle
                       size={18}
                       weight="fill"
