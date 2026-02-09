@@ -291,16 +291,23 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
   );
 }
 
-function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
+function SidebarInset({ className, children, ...props }: React.ComponentProps<"main">) {
   return (
     <main
       data-slot="sidebar-inset"
       className={cn(
-        "bg-background md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-none md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2 relative flex w-full flex-1 flex-col",
+        "bg-background md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-none md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2 relative flex w-full flex-1 flex-col [[data-tauri]_&]:pt-10",
         className
       )}
       {...props}
-    />
+    >
+      {/* Drag region for Tauri — covers the top inset area */}
+      <div
+        data-tauri-drag-region
+        className="absolute inset-x-0 top-0 h-10 hidden [[data-tauri]_&]:block"
+      />
+      {children}
+    </main>
   );
 }
 

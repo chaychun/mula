@@ -48,6 +48,8 @@
 }
 
 :root {
+  --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
+  --font-geist-mono: "Geist Mono", ui-monospace, monospace;
   --background: oklch(1 0 0);
   --foreground: oklch(0.147 0.004 49.25);
   --card: oklch(1 0 0);
@@ -120,8 +122,11 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    @apply overscroll-none overflow-hidden h-full;
+  }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground overscroll-none h-full overflow-hidden;
   }
 }
 

@@ -6,12 +6,13 @@ node_modules
 # testing
 coverage
 
-# next.js
-.next/
-out/
+# tauri
+src-tauri/target/
+src-tauri/binaries/
 
 # production
 build
+dist
 
 # misc
 .DS_Store
@@ -23,11 +24,16 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
+.env
 .env*.local
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts
+
+# sqlite database
+*.db
+*.db-wal
+*.db-shm
 
 # npm (using bun)
 package-lock.json
