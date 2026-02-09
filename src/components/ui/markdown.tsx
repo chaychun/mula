@@ -1,9 +1,9 @@
-import { cn } from "@/lib/utils";
 import { marked } from "marked";
 import { memo, useId, useMemo } from "react";
 import ReactMarkdown, { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { CodeBlock, CodeBlockCode, CodeBlockHeader } from "./code-block";
+import { MermaidBlock } from "./mermaid-block";
 import { ScrollArea } from "./scroll-area";
 
 export type MarkdownProps = {
@@ -69,6 +69,10 @@ const INITIAL_COMPONENTS: Partial<Components> = {
 
     const language = extractLanguage(className);
     const codeString = String(children).replace(/\n$/, "");
+
+    if (language === "mermaid") {
+      return <MermaidBlock code={codeString} />;
+    }
 
     return (
       <div className="my-4">
