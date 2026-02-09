@@ -50,6 +50,9 @@ export default function SessionPage({ params }: PageProps) {
     submitExercise,
     skipExercise,
     retryExercise,
+    conceptQuestions,
+    setConceptQuestions,
+    answerConceptQuestion,
   } = useChat({
     projectId,
     sessionId,
@@ -76,13 +79,24 @@ export default function SessionPage({ params }: PageProps) {
         if (session.exercises) {
           setExercises(session.exercises);
         }
+        if (session.conceptQuestions) {
+          setConceptQuestions(session.conceptQuestions);
+        }
         if (session.agentSessionId) {
           setAgentSessionId(session.agentSessionId);
         }
       }
     };
     loadSessionData();
-  }, [projectId, sessionId, selectSession, loadMessages, setExercises, setAgentSessionId]);
+  }, [
+    projectId,
+    sessionId,
+    selectSession,
+    loadMessages,
+    setExercises,
+    setConceptQuestions,
+    setAgentSessionId,
+  ]);
 
   // Restore active exercise when session loads
   // Include needs_retry status since the user should be able to retry immediately
@@ -189,6 +203,7 @@ export default function SessionPage({ params }: PageProps) {
           <Chat
             messages={messages}
             exercises={exercises}
+            conceptQuestions={conceptQuestions}
             isStreaming={isStreaming}
             streamingContent={streamingContent}
             streamingToolCalls={streamingToolCalls}
@@ -200,6 +215,7 @@ export default function SessionPage({ params }: PageProps) {
             onExerciseSkip={skipExercise}
             onExerciseReset={() => {}}
             onExerciseRetry={retryExercise}
+            onConceptAnswer={answerConceptQuestion}
           />
         )}
       </SidebarInset>

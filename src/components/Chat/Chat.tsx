@@ -1,6 +1,6 @@
 "use client";
 
-import type { Message, Exercise, ToolCall, ContentBlock } from "@/lib/types";
+import type { Message, Exercise, ToolCall, ContentBlock, ConceptQuestion } from "@/lib/types";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
 import ExercisePanel from "@/components/Exercise/ExercisePanel";
@@ -84,6 +84,7 @@ function EmptyState({
 interface ChatProps {
   messages: Message[];
   exercises?: Record<string, Exercise>;
+  conceptQuestions?: Record<string, ConceptQuestion>;
   isStreaming: boolean;
   streamingContent: string;
   streamingToolCalls: ToolCall[];
@@ -95,12 +96,14 @@ interface ChatProps {
   onExerciseSkip?: () => void;
   onExerciseReset?: () => void;
   onExerciseRetry?: (exerciseId: string, code: string) => void;
+  onConceptAnswer?: (questionId: string, optionIndex: number) => void;
   className?: string;
 }
 
 export default function Chat({
   messages,
   exercises,
+  conceptQuestions,
   isStreaming,
   streamingContent,
   streamingToolCalls,
@@ -112,6 +115,7 @@ export default function Chat({
   onExerciseSkip,
   onExerciseReset,
   onExerciseRetry,
+  onConceptAnswer,
   className = "",
 }: ChatProps) {
   const isEmptyState =
@@ -137,11 +141,13 @@ export default function Chat({
                 <MessageList
                   messages={messages}
                   exercises={exercises}
+                  conceptQuestions={conceptQuestions}
                   streamingContent={streamingContent}
                   streamingToolCalls={streamingToolCalls}
                   streamingContentBlocks={streamingContentBlocks}
                   isStreaming={isStreaming}
                   onExerciseRetry={onExerciseRetry}
+                  onConceptAnswer={onConceptAnswer}
                 />
               )}
             </div>

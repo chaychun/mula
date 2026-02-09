@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect } from "react";
-import type { Message, Exercise, ToolCall, ContentBlock } from "@/lib/types";
+import type { Message, Exercise, ToolCall, ContentBlock, ConceptQuestion } from "@/lib/types";
 import ChatMessage from "./Message";
 import ExerciseBlock from "./ExerciseBlock";
 import { Loader } from "@/components/ui/loader";
@@ -9,21 +9,25 @@ import { Loader } from "@/components/ui/loader";
 interface MessageListProps {
   messages: Message[];
   exercises?: Record<string, Exercise>;
+  conceptQuestions?: Record<string, ConceptQuestion>;
   streamingContent: string;
   streamingToolCalls: ToolCall[];
   streamingContentBlocks: ContentBlock[];
   isStreaming: boolean;
   onExerciseRetry?: (exerciseId: string, code: string) => void;
+  onConceptAnswer?: (questionId: string, optionIndex: number) => void;
 }
 
 export default function MessageList({
   messages,
   exercises,
+  conceptQuestions,
   streamingContent,
   streamingToolCalls,
   streamingContentBlocks,
   isStreaming,
   onExerciseRetry,
+  onConceptAnswer,
 }: MessageListProps) {
   const isInitialRender = useRef(true);
   const prevMessageCount = useRef(messages.length);
@@ -51,7 +55,13 @@ export default function MessageList({
               : ""
           }
         >
-          <ChatMessage message={message} exercises={exercises} onRetry={onExerciseRetry} />
+          <ChatMessage
+            message={message}
+            exercises={exercises}
+            conceptQuestions={conceptQuestions}
+            onRetry={onExerciseRetry}
+            onConceptAnswer={onConceptAnswer}
+          />
           {/* Show exercise block if this message has one */}
           {message.exercise && <ExerciseBlock exercise={message.exercise} />}
         </div>
@@ -70,6 +80,8 @@ export default function MessageList({
               contentBlocks: streamingContentBlocks.length > 0 ? streamingContentBlocks : undefined,
             }}
             exercises={exercises}
+            conceptQuestions={conceptQuestions}
+            onConceptAnswer={onConceptAnswer}
           />
         </div>
       )}

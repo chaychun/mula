@@ -1,10 +1,11 @@
 "use client";
 
-import type { Message, Exercise, ToolCall } from "@/lib/types";
+import type { Message, Exercise, ToolCall, ConceptQuestion } from "@/lib/types";
 import { Markdown } from "@/components/ui/markdown";
 import { Tool } from "@/components/ui/tool";
 import { ExerciseSubmissionCard } from "./ExerciseSubmissionCard";
 import ExerciseBlock from "./ExerciseBlock";
+import ConceptQuestionBlock from "./ConceptQuestionBlock";
 import { useStreamBuffer } from "@/hooks/useStreamBuffer";
 
 /**
@@ -27,18 +28,60 @@ function getExerciseIdFromToolCall(toolCall: ToolCall): string | null {
   }
 }
 
+/**
+ * Extract questionId from an ask_concept_question tool call output
+ */
+function getQuestionIdFromToolCall(toolCall: ToolCall): string | null {
+  if (
+    toolCall.name !== "mcp__coding-tutor__ask_concept_question" ||
+    toolCall.status !== "completed" ||
+    !toolCall.output
+  ) {
+    return null;
+  }
+
+  try {
+    const result = JSON.parse(toolCall.output);
+    return result.questionId ?? null;
+  } catch {
+    return null;
+  }
+}
+
 interface ChatMessageProps {
   message: Message;
   exercises?: Record<string, Exercise>;
+  conceptQuestions?: Record<string, ConceptQuestion>;
   onRetry?: (exerciseId: string, code: string) => void;
+  onConceptAnswer?: (questionId: string, optionIndex: number) => void;
 }
 
-export default function ChatMessage({ message, exercises, onRetry }: ChatMessageProps) {
+export default function ChatMessage({
+  message,
+  exercises,
+  conceptQuestions,
+  onRetry,
+  onConceptAnswer,
+}: ChatMessageProps) {
   const isUser = message.role === "user";
   const isStreaming = message.id === "streaming";
 
   // Buffer the raw streaming content for word-by-word reveal
   const bufferedText = useStreamBuffer(isStreaming ? message.content || "" : "");
+
+  // For user messages with concept question answer, render a simple answer card
+  if (isUser && message.conceptQuestionAnswer) {
+    const { selectedOption } = message.conceptQuestionAnswer;
+    return (
+      <div className="flex justify-end">
+        <div className="max-w-[85%] px-4 py-2 bg-primary text-primary-foreground">
+          <p className="text-sm">
+            Answered: <span className="font-medium">{selectedOption}</span>
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // For user messages with exercise submission, render ExerciseSubmissionCard
   if (isUser && message.exerciseSubmission) {
@@ -102,10 +145,15 @@ export default function ChatMessage({ message, exercises, onRetry }: ChatMessage
               if (block.type === "tool_call") {
                 const exerciseId = getExerciseIdFromToolCall(block.toolCall);
                 const exercise = exerciseId ? exercises?.[exerciseId] : null;
+                const questionId = getQuestionIdFromToolCall(block.toolCall);
+                const question = questionId ? conceptQuestions?.[questionId] : null;
                 return (
                   <div key={block.toolCall.id}>
                     <Tool toolCall={block.toolCall} />
                     {exercise && <ExerciseBlock exercise={exercise} />}
+                    {question && (
+                      <ConceptQuestionBlock question={question} onAnswer={onConceptAnswer} />
+                    )}
                   </div>
                 );
               }
@@ -130,10 +178,15 @@ export default function ChatMessage({ message, exercises, onRetry }: ChatMessage
           {message.toolCalls?.map((toolCall) => {
             const exerciseId = getExerciseIdFromToolCall(toolCall);
             const exercise = exerciseId ? exercises?.[exerciseId] : null;
+            const questionId = getQuestionIdFromToolCall(toolCall);
+            const question = questionId ? conceptQuestions?.[questionId] : null;
             return (
               <div key={toolCall.id}>
                 <Tool toolCall={toolCall} />
                 {exercise && <ExerciseBlock exercise={exercise} />}
+                {question && (
+                  <ConceptQuestionBlock question={question} onAnswer={onConceptAnswer} />
+                )}
               </div>
             );
           })}
