@@ -7,7 +7,7 @@ A dev-only toggle in the chatbox that switches the AI from tutor mode to testing
 ## UI
 
 - Toggle switch in `PromptInputActions` bar, left side
-- Gated by `NEXT_PUBLIC_DEV_TOOLS=true` env var (set in `.env.local`)
+- Gated by `NODE_ENV === "development"` (automatic in dev, no env file needed)
 - State owned by `SessionPage` — session-scoped, not per-message, not persisted
 - Visual indicator when active (accent-colored label)
 
@@ -34,8 +34,7 @@ When `testingMode` is true and the action is `submit`, `hint`, or `concept_answe
 
 ## Files Changed
 
-1. `.env.local` — add `NEXT_PUBLIC_DEV_TOOLS=true`
-2. `src/lib/agent/systemPrompt.ts` — add `testingMode` param, wrap prompt with preamble
+1. `src/lib/agent/systemPrompt.ts` — add `testingMode` param, wrap prompt with preamble
 3. `src/app/api/chat/route.ts` — add `testingMode` to request interface, pass to system prompt, prepend debug echo
 4. `src/hooks/useChat.ts` — add `testingMode` param to `sendMessage`
 5. `src/app/projects/[projectId]/sessions/[sessionId]/page.tsx` — own `testingMode` state, pass through

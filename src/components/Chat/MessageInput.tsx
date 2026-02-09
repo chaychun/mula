@@ -6,7 +6,7 @@ import { ArrowUp } from "@phosphor-icons/react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PromptInput, PromptInputTextarea, PromptInputActions } from "@/components/ui/prompt-input";
 
-const showDevTools = process.env.NEXT_PUBLIC_DEV_TOOLS === "true";
+const showDevTools = process.env.NODE_ENV === "development";
 
 interface MessageInputProps {
   onSend: (message: string) => void;
