@@ -125,4 +125,13 @@
   }
 }
 
+/* Fill-in-blank editable zone highlighting */
+.fill-in-blank-editable {
+  background-color: oklch(0.8 0.04 80 / 0.3);
+  border-bottom: 2px solid oklch(0.7 0.1 80);
+}
 
+:is(.dark) .fill-in-blank-editable {
+  background-color: oklch(0.35 0.04 80 / 0.4);
+  border-bottom: 2px solid oklch(0.6 0.1 80);
+}
