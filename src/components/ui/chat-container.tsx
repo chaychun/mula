@@ -31,7 +31,6 @@ function ChatContainerContent({ children, className, ...props }: ChatContainerCo
   return (
     <StickToBottom.Content
       className={cn("flex w-full flex-col", className)}
-      scrollClassName="w-full scrollbar-gutter-auto"
       {...props}
     >
       {children}

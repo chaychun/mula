@@ -23,9 +23,7 @@ export async function POST(request: Request) {
   let promptText: string;
 
   // Debug prefix for testing mode — echoes raw input so the developer can verify data flow
-  const debugPrefix = testingMode
-    ? `[DEBUG — Testing Mode]\nAction: ${action}\n`
-    : "";
+  const debugPrefix = testingMode ? `[DEBUG — Testing Mode]\nAction: ${action}\n` : "";
 
   if (action === "submit") {
     promptText = `${debugPrefix}${testingMode ? `Editor code received:\n\`\`\`\n${editorCode}\n\`\`\`\n\n` : ""}The student has submitted their code for evaluation:

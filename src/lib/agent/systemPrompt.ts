@@ -21,7 +21,7 @@ The normal tutor instructions are kept below so you know what tools exist and ho
 export function getTutorSystemPrompt(
   projectId: string,
   sessionId: string,
-  testingMode: boolean = false,
+  testingMode: boolean = false
 ): string {
   const tutorPrompt = `You are an expert coding tutor. Your role is to help students learn programming concepts through adaptive, personalized instruction.
 

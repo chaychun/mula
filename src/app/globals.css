@@ -125,8 +125,4 @@
   }
 }
 
-/* Override use-stick-to-bottom's scrollbar-gutter: stable both-edges */
-.scrollbar-gutter-auto {
-  scrollbar-gutter: auto !important;
-}
 

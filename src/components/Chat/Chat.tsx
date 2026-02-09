@@ -139,7 +139,7 @@ export default function Chat({
       <div className="relative flex-1 min-h-0">
         <ChatContainerRoot className="h-full">
           <ChatContainerContent className="px-4 pt-4 pb-8">
-            <div className="max-w-3xl mx-auto">
+            <div className="w-full max-w-3xl mx-auto">
               {loading ? (
                 <div className="h-full flex items-center justify-center">
                   <div className="text-center">
@@ -169,9 +169,9 @@ export default function Chat({
               )}
             </div>
           </ChatContainerContent>
-          <div className="absolute bottom-4 left-0 right-0 pointer-events-none">
-            <div className="max-w-3xl mx-auto px-4 flex justify-end">
-              <ScrollButton className="pointer-events-auto" />
+          <div className="absolute bottom-4 left-0 right-0 pointer-events-none px-4">
+            <div className="w-full max-w-3xl mx-auto flex justify-end">
+              <ScrollButton variant="solid" className="pointer-events-auto shadow-md" />
             </div>
           </div>
         </ChatContainerRoot>
@@ -180,7 +180,7 @@ export default function Chat({
       {/* Exercise Panel - shows when there's an active exercise */}
       {activeExercise && (
         <div className="px-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
-          <div className="max-w-3xl mx-auto">
+          <div className="w-full max-w-3xl mx-auto">
             <ExercisePanel
               exercise={activeExercise}
               onSubmit={onExerciseSubmit || (() => {})}
@@ -195,7 +195,7 @@ export default function Chat({
       {/* Input - hidden when showing empty state (input is embedded there) */}
       {!isEmptyState && (
         <div className="relative z-10 px-4 pb-4">
-          <div className="max-w-3xl mx-auto">
+          <div className="w-full max-w-3xl mx-auto">
             <MessageInput
               onSend={onSendMessage}
               disabled={isStreaming}

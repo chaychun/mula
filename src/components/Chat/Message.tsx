@@ -98,89 +98,119 @@ export default function ChatMessage({
     // gets whatever the buffer has revealed so far.
     let charBudget = isStreaming ? bufferedText.length : Infinity;
 
-    return (
-      <div className={`flex w-full ${isUser ? "justify-end" : "justify-start"}`}>
-        <div
-          className={`${isUser ? "max-w-[85%] px-4 py-2 bg-primary text-primary-foreground" : "w-[80%] text-foreground"}`}
-        >
-          <div className="space-y-2">
-            {message.contentBlocks.map((block, index) => {
-              if (block.type === "text") {
-                let displayText = block.text;
-                if (isStreaming) {
-                  // Take up to blockLength chars from the remaining budget
-                  const take = Math.min(block.text.length, charBudget);
-                  displayText = block.text.slice(0, take);
-                  charBudget -= take;
+    if (isUser) {
+      return (
+        <div className="flex w-full justify-end">
+          <div className="max-w-[85%] px-4 py-2 bg-primary text-primary-foreground">
+            <div className="space-y-2">
+              {message.contentBlocks.map((block, index) => {
+                if (block.type === "text") {
+                  return (
+                    <div key={`text-${index}`} className="text-sm">
+                      <Markdown id={message.id}>{block.text}</Markdown>
+                    </div>
+                  );
                 }
-
-                // Don't render empty text blocks during streaming
-                if (isStreaming && !displayText) return null;
-
-                return (
-                  <div key={`text-${index}`} className="text-sm">
-                    <Markdown id={message.id}>{displayText}</Markdown>
-                  </div>
-                );
-              }
-              if (block.type === "tool_call") {
-                const exerciseId = getExerciseIdFromToolCall(block.toolCall);
-                const exercise = exerciseId ? exercises?.[exerciseId] : null;
-                const questionId = getQuestionIdFromToolCall(block.toolCall);
-                const question = questionId ? conceptQuestions?.[questionId] : null;
-                return (
-                  <div key={block.toolCall.id}>
-                    <Tool toolCall={block.toolCall} />
-                    {exercise && <ExerciseBlock exercise={exercise} />}
-                    {question && (
-                      <ConceptQuestionBlock question={question} onAnswer={onConceptAnswer} />
-                    )}
-                  </div>
-                );
-              }
-              return null;
-            })}
+                if (block.type === "tool_call") {
+                  return <Tool key={block.toolCall.id} toolCall={block.toolCall} />;
+                }
+                return null;
+              })}
+            </div>
           </div>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ width: "85%" }} className="text-foreground">
+        <div className="space-y-2">
+          {message.contentBlocks.map((block, index) => {
+            if (block.type === "text") {
+              let displayText = block.text;
+              if (isStreaming) {
+                const take = Math.min(block.text.length, charBudget);
+                displayText = block.text.slice(0, take);
+                charBudget -= take;
+              }
+
+              if (isStreaming && !displayText) return null;
+
+              return (
+                <div key={`text-${index}`} className="text-sm">
+                  <Markdown id={message.id}>{displayText}</Markdown>
+                </div>
+              );
+            }
+            if (block.type === "tool_call") {
+              const exerciseId = getExerciseIdFromToolCall(block.toolCall);
+              const exercise = exerciseId ? exercises?.[exerciseId] : null;
+              const questionId = getQuestionIdFromToolCall(block.toolCall);
+              const question = questionId ? conceptQuestions?.[questionId] : null;
+              return (
+                <div key={block.toolCall.id}>
+                  <Tool toolCall={block.toolCall} />
+                  {exercise && <ExerciseBlock exercise={exercise} />}
+                  {question && (
+                    <ConceptQuestionBlock question={question} onAnswer={onConceptAnswer} />
+                  )}
+                </div>
+              );
+            }
+            return null;
+          })}
         </div>
       </div>
     );
   }
 
   // Fallback to legacy rendering (tool calls first, then content)
-  return (
-    <div className={`flex w-full ${isUser ? "justify-end" : "justify-start"}`}>
-      <div
-        className={`max-w-[85%] px-4 py-2 ${
-          isUser ? "bg-primary text-primary-foreground" : "text-foreground"
-        }`}
-      >
-        <div className="space-y-2">
-          {/* Tool calls */}
-          {message.toolCalls?.map((toolCall) => {
-            const exerciseId = getExerciseIdFromToolCall(toolCall);
-            const exercise = exerciseId ? exercises?.[exerciseId] : null;
-            const questionId = getQuestionIdFromToolCall(toolCall);
-            const question = questionId ? conceptQuestions?.[questionId] : null;
-            return (
-              <div key={toolCall.id}>
-                <Tool toolCall={toolCall} />
-                {exercise && <ExerciseBlock exercise={exercise} />}
-                {question && (
-                  <ConceptQuestionBlock question={question} onAnswer={onConceptAnswer} />
-                )}
+  if (isUser) {
+    return (
+      <div className="flex w-full justify-end">
+        <div className="max-w-[85%] px-4 py-2 bg-primary text-primary-foreground">
+          <div className="space-y-2">
+            {(isStreaming ? bufferedText : message.content) && (
+              <div className="text-sm">
+                <Markdown id={message.id}>
+                  {isStreaming ? bufferedText : message.content || ""}
+                </Markdown>
               </div>
-            );
-          })}
-
-          {/* Message content with markdown */}
-          {(isStreaming ? bufferedText : message.content) && (
-            <div className="text-sm">
-              <Markdown id={message.id}>
-                {isStreaming ? bufferedText : message.content || ""}
-              </Markdown>
-            </div>
-          )}
+            )}
+          </div>
         </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ width: "85%" }} className="text-foreground">
+      <div className="space-y-2">
+        {/* Tool calls */}
+        {message.toolCalls?.map((toolCall) => {
+          const exerciseId = getExerciseIdFromToolCall(toolCall);
+          const exercise = exerciseId ? exercises?.[exerciseId] : null;
+          const questionId = getQuestionIdFromToolCall(toolCall);
+          const question = questionId ? conceptQuestions?.[questionId] : null;
+          return (
+            <div key={toolCall.id}>
+              <Tool toolCall={toolCall} />
+              {exercise && <ExerciseBlock exercise={exercise} />}
+              {question && (
+                <ConceptQuestionBlock question={question} onAnswer={onConceptAnswer} />
+              )}
+            </div>
+          );
+        })}
+
+        {/* Message content with markdown */}
+        {(isStreaming ? bufferedText : message.content) && (
+          <div className="text-sm">
+            <Markdown id={message.id}>
+              {isStreaming ? bufferedText : message.content || ""}
+            </Markdown>
+          </div>
+        )}
       </div>
     </div>
   );
