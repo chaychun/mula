@@ -586,11 +586,17 @@ export function useChat({
       // Store exercise context for recovery in case of error
       const exerciseToSubmit = activeExercise;
       const attemptId = crypto.randomUUID();
-      const exerciseType = exerciseToSubmit.type ?? "fill_in_blank";
+      const exerciseType = exerciseToSubmit.type;
 
       // Build submission content based on exercise type
       let submissionContent: string;
       let editorCodeForAI: string;
+
+      if (exerciseType === "fill_in_blank" && !blankValues) {
+        setActiveExercise(exerciseToSubmit);
+        setError("Fill-in-blank submission is missing blank values");
+        return;
+      }
 
       if (exerciseType === "fill_in_blank" && blankValues) {
         const blankList = Object.entries(blankValues)
@@ -629,22 +635,27 @@ export function useChat({
           }
         );
 
-        if (attemptResponse.ok) {
-          const attempt = await attemptResponse.json();
-          // Update local exercises state with the new attempt
-          setExercises((prev) => {
-            const exercise = prev[exerciseToSubmit.id];
-            if (!exercise) return prev;
-            return {
-              ...prev,
-              [exerciseToSubmit.id]: {
-                ...exercise,
-                status: "pending_review",
-                attempts: [...exercise.attempts, attempt],
-              },
-            };
-          });
+        if (!attemptResponse.ok) {
+          console.error("Failed to submit attempt:", attemptResponse.status);
+          setActiveExercise(exerciseToSubmit);
+          setError("Failed to submit exercise attempt");
+          return;
         }
+
+        const attempt = await attemptResponse.json();
+        // Update local exercises state with the new attempt
+        setExercises((prev) => {
+          const exercise = prev[exerciseToSubmit.id];
+          if (!exercise) return prev;
+          return {
+            ...prev,
+            [exerciseToSubmit.id]: {
+              ...exercise,
+              status: "pending_review",
+              attempts: [...exercise.attempts, attempt],
+            },
+          };
+        });
 
         // Send the message with exercise submission metadata and editor code
         await sendMessage(submissionContent, "submit", exerciseSubmission, editorCodeForAI);

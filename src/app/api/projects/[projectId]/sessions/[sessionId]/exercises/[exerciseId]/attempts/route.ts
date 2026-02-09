@@ -21,6 +21,21 @@ export async function POST(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "attemptId and code are required" }, { status: 400 });
     }
 
+    // Validate blankValues if provided — must be a plain object with string values
+    if (blankValues !== undefined) {
+      if (
+        typeof blankValues !== "object" ||
+        blankValues === null ||
+        Array.isArray(blankValues) ||
+        !Object.values(blankValues).every((v) => typeof v === "string")
+      ) {
+        return NextResponse.json(
+          { error: "blankValues must be an object with string values" },
+          { status: 400 }
+        );
+      }
+    }
+
     const attempt = await storage.submitExerciseAttempt(
       projectId,
       sessionId,

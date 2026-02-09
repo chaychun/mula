@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import Editor, { OnMount } from "@monaco-editor/react";
 import type * as Monaco from "monaco-editor";
 import { useTheme } from "@/components/theme-provider";
@@ -14,11 +14,14 @@ interface BlankPosition {
 }
 
 const MIN_BLANK_WIDTH = 3;
-// Zero-width space: invisible anchor char that gives decorations a non-zero
-// range so Monaco renders the after-injected padding text
+// Zero-width space used as an anchor when a blank has no user input yet.
+// Without it the decoration range would be zero-width and Monaco wouldn't
+// render the after-injected padding that shows the minimum blank width.
 const ZWS = "\u200B";
 
-/** Parse starterCode to find all ___ positions */
+const BLANK_PATTERN = /(?<![_])___(?![_])/g;
+
+/** Parse starterCode to find all ___ positions (exactly 3 underscores, not part of longer runs) */
 function findBlanks(code: string): BlankPosition[] {
   const blanks: BlankPosition[] = [];
   const lines = code.split("\n");
@@ -26,25 +29,23 @@ function findBlanks(code: string): BlankPosition[] {
 
   for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
     const line = lines[lineIdx];
-    let searchFrom = 0;
-    while (true) {
-      const col = line.indexOf("___", searchFrom);
-      if (col === -1) break;
+    BLANK_PATTERN.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = BLANK_PATTERN.exec(line)) !== null) {
       blanks.push({
         index: blankIndex++,
         line: lineIdx + 1,
-        startColumn: col + 1,
-        endColumn: col + 4, // ___ is 3 chars
+        startColumn: match.index + 1,
+        endColumn: match.index + 4, // ___ is 3 chars
       });
-      searchFrom = col + 3;
     }
   }
   return blanks;
 }
 
 /**
- * Replace every ___ with the corresponding initial value (or empty string).
- * Returns the resulting code and the adjusted blank ranges.
+ * Replace every ___ with the corresponding initial value (or a zero-width space
+ * anchor when no value exists). Returns the resulting code and adjusted blank ranges.
  */
 function buildInitialState(
   starterCode: string,
@@ -114,12 +115,13 @@ export default function FillInBlankEditor({
   onBlankValuesChange,
   initialBlankValues,
 }: FillInBlankEditorProps) {
+  const [initError, setInitError] = useState<string | null>(null);
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<typeof Monaco | null>(null);
   const constrainedInstanceRef = useRef<any>(null);
-  // Tracking collection: pure range tracking, never visually modified
+  // Tracking collection: range tracking via stickiness (grows with edits), used to read blank values
   const trackingCollectionRef = useRef<Monaco.editor.IEditorDecorationsCollection | null>(null);
-  // Visual collection: rebuilt on each change for styling + min-width padding
+  // Visual collection: rebuilt on each content change for styling + min-width padding
   const visualCollectionRef = useRef<Monaco.editor.IEditorDecorationsCollection | null>(null);
   const blankCountRef = useRef(0);
   const modelListenerRef = useRef<Monaco.IDisposable | null>(null);
@@ -166,7 +168,13 @@ export default function FillInBlankEditor({
       instance.initializeIn(editor);
 
       const model = editor.getModel();
-      if (!model) return;
+      if (!model) {
+        console.error("FillInBlankEditor: editor model is null after init");
+        instance.disposeConstrainer();
+        constrainedInstanceRef.current = null;
+        setInitError("Editor failed to initialize");
+        return;
+      }
 
       // Set up restriction zones (editable areas, everything else is read-only)
       const restrictions = initialRanges.map((range, idx) => ({
@@ -290,6 +298,7 @@ export default function FillInBlankEditor({
       });
     } catch (err) {
       console.error("Failed to initialize constrained editor:", err);
+      setInitError("Failed to load editor plugin");
     }
   };
 
@@ -300,12 +309,20 @@ export default function FillInBlankEditor({
       if (constrainedInstanceRef.current) {
         try {
           constrainedInstanceRef.current.disposeConstrainer();
-        } catch {
-          // Plugin may already be disposed
+        } catch (e) {
+          console.warn("Constrained editor dispose failed (may already be disposed):", e);
         }
       }
     };
   }, []);
+
+  if (initError) {
+    return (
+      <div className="h-[200px] border-b border-border flex items-center justify-center">
+        <p className="text-sm text-muted-foreground">{initError}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="h-[200px] border-b border-border">

@@ -9,14 +9,9 @@ declare module "constrained-editor-plugin" {
 
   interface ConstrainedInstance {
     initializeIn(editor: Monaco.editor.IStandaloneCodeEditor): void;
-    addRestrictionsTo(
-      model: Monaco.editor.ITextModel,
-      restrictions: Restriction[],
-    ): void;
+    addRestrictionsTo(model: Monaco.editor.ITextModel, restrictions: Restriction[]): void;
     disposeConstrainer(): void;
   }
 
-  export default function constrainedEditor(
-    monaco: typeof Monaco,
-  ): ConstrainedInstance;
+  export default function constrainedEditor(monaco: typeof Monaco): ConstrainedInstance;
 }

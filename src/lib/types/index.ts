@@ -62,6 +62,7 @@ export type ExerciseStatus =
 export const MAX_EXERCISE_RETRIES = 3;
 
 export type ExerciseType = "write_code" | "fill_in_blank";
+export const DEFAULT_EXERCISE_TYPE: ExerciseType = "fill_in_blank";
 
 // Exercise attempt - tracks each submission with its evaluated status
 export interface ExerciseAttempt {
@@ -76,7 +77,7 @@ export interface ExerciseAttempt {
 // Exercise types
 export interface Exercise {
   id: string;
-  type?: ExerciseType;
+  type: ExerciseType;
   title: string;
   language: string;
   instructions: string;

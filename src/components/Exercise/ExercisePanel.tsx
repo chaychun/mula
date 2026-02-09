@@ -23,8 +23,9 @@ export default function ExercisePanel({
   onReset,
   disabled = false,
 }: ExercisePanelProps) {
-  const exerciseType = exercise.type ?? "fill_in_blank";
+  const exerciseType = exercise.type;
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [resetKey, setResetKey] = useState(0);
 
   // Code state — used for write_code exercises
   const [code, setCode] = useState(() => {
@@ -35,7 +36,7 @@ export default function ExercisePanel({
   });
 
   // Blank values state — used for fill_in_blank exercises
-  const [blankValues, setBlankValues] = useState<Record<string, string>>(() => {
+  const [, setBlankValues] = useState<Record<string, string>>(() => {
     if (exercise.attempts.length > 0) {
       return exercise.attempts[exercise.attempts.length - 1].blankValues ?? {};
     }
@@ -44,7 +45,11 @@ export default function ExercisePanel({
 
   // Ref tracks latest blank values for reliable access at submit time
   // (avoids stale closure if React hasn't re-rendered yet)
-  const blankValuesRef = useRef<Record<string, string>>({});
+  const blankValuesRef = useRef<Record<string, string>>(
+    exercise.attempts.length > 0
+      ? (exercise.attempts[exercise.attempts.length - 1].blankValues ?? {})
+      : {}
+  );
   const handleBlankValuesChange = useCallback((values: Record<string, string>) => {
     blankValuesRef.current = values;
     setBlankValues(values);
@@ -97,6 +102,8 @@ export default function ExercisePanel({
   const handleReset = () => {
     if (exerciseType === "fill_in_blank") {
       setBlankValues({});
+      blankValuesRef.current = {};
+      setResetKey((k) => k + 1);
     } else {
       setCode(exercise.starterCode);
     }
@@ -119,7 +126,7 @@ export default function ExercisePanel({
 
           {exerciseType === "fill_in_blank" ? (
             <FillInBlankEditor
-              key={exercise.id}
+              key={`${exercise.id}-${resetKey}`}
               starterCode={exercise.starterCode}
               language={exercise.language}
               onBlankValuesChange={handleBlankValuesChange}

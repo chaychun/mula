@@ -65,10 +65,10 @@ export async function getSession(projectId: string, sessionId: string): Promise<
     session.conceptQuestions = {};
   }
 
-  // Migrate exercises missing `type` field
+  // Migrate exercises missing `type` field — detect from starter code
   for (const exercise of Object.values(session.exercises)) {
     if (!exercise.type) {
-      exercise.type = "fill_in_blank";
+      exercise.type = exercise.starterCode?.includes("___") ? "fill_in_blank" : "write_code";
     }
   }
 
@@ -97,10 +97,10 @@ export async function updateSession(
       session.conceptQuestions = {};
     }
 
-    // Migrate exercises missing `type` field
+    // Migrate exercises missing `type` field — detect from starter code
     for (const exercise of Object.values(session.exercises)) {
       if (!exercise.type) {
-        exercise.type = "fill_in_blank";
+        exercise.type = exercise.starterCode?.includes("___") ? "fill_in_blank" : "write_code";
       }
     }
 
