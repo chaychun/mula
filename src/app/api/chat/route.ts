@@ -10,7 +10,7 @@ interface ChatRequest {
   projectId: string;
   sessionId: string;
   resumeSessionId?: string;
-  action: "message" | "submit" | "hint" | "skip";
+  action: "message" | "submit" | "hint" | "skip" | "concept_answer";
   editorCode?: string;
 }
 
@@ -40,6 +40,8 @@ Provide a helpful hint that guides them toward the solution without giving away 
   } else if (action === "skip") {
     // For skip action, pass the message through as-is (it contains the skip notification)
     promptText = message;
+  } else if (action === "concept_answer") {
+    promptText = message;
   } else {
     promptText = message;
   }
@@ -63,6 +65,7 @@ Provide a helpful hint that guides them toward the solution without giving away 
               "mcp__coding-tutor__create_exercise",
               "mcp__coding-tutor__update_exercise",
               "mcp__coding-tutor__list_topics",
+              "mcp__coding-tutor__ask_concept_question",
               "mcp__coding-tutor__wrap_up_session",
               "WebSearch",
               "WebFetch",

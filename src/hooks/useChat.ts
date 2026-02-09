@@ -1,7 +1,15 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import type { Message, Exercise, ToolCall, ContentBlock, ExerciseSubmission } from "@/lib/types";
+import type {
+  Message,
+  Exercise,
+  ToolCall,
+  ContentBlock,
+  ExerciseSubmission,
+  ConceptQuestion,
+  ConceptQuestionAnswer,
+} from "@/lib/types";
 import { generateTitleFromMessage } from "@/lib/utils/generateTitle";
 
 interface SDKContentBlock {
@@ -55,6 +63,7 @@ export function useChat({
   const [error, setError] = useState<string | null>(null);
   const [activeExercise, setActiveExercise] = useState<Exercise | null>(null);
   const [exercises, setExercises] = useState<Record<string, Exercise>>({});
+  const [conceptQuestions, setConceptQuestions] = useState<Record<string, ConceptQuestion>>({});
   const abortControllerRef = useRef<AbortController | null>(null);
   const titleGeneratedRef = useRef(false);
   const messagesRef = useRef<Message[]>([]);
@@ -128,6 +137,50 @@ export function useChat({
     [projectId, sessionId]
   );
 
+  // Fetch full session data (exercises + concept questions)
+  const fetchSessionData = useCallback(
+    async (
+      signal?: AbortSignal
+    ): Promise<{
+      exercises: Record<string, Exercise>;
+      conceptQuestions: Record<string, ConceptQuestion>;
+    } | null> => {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (signal?.aborted || !mountedRef.current) return null;
+
+        if (attempt > 0) {
+          await new Promise<void>((resolve, reject) => {
+            const timeoutId = setTimeout(resolve, 200 * attempt);
+            signal?.addEventListener("abort", () => {
+              clearTimeout(timeoutId);
+              reject(new DOMException("Aborted", "AbortError"));
+            });
+          }).catch(() => null);
+          if (signal?.aborted || !mountedRef.current) return null;
+        }
+
+        try {
+          const response = await fetch(`/api/projects/${projectId}/sessions/${sessionId}`, {
+            cache: "no-store",
+            signal,
+          });
+          if (response.ok) {
+            const session = await response.json();
+            return {
+              exercises: session.exercises || {},
+              conceptQuestions: session.conceptQuestions || {},
+            };
+          }
+        } catch (err) {
+          if (err instanceof Error && err.name === "AbortError") return null;
+          throw err;
+        }
+      }
+      return null;
+    },
+    [projectId, sessionId]
+  );
+
   // Generate a unique message ID
   const generateMessageId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -135,7 +188,7 @@ export function useChat({
   const sendMessage = useCallback(
     async (
       content: string,
-      action: "message" | "submit" | "hint" | "skip" = "message",
+      action: "message" | "submit" | "hint" | "skip" | "concept_answer" = "message",
       exerciseSubmission?: ExerciseSubmission,
       editorCode?: string
     ) => {
@@ -293,6 +346,29 @@ export function useChat({
                   }
                 } catch (e) {
                   console.error("Failed to parse exercise update result:", e);
+                }
+              })();
+              pendingExerciseFetches.push(fetchPromise);
+            }
+
+            // Detect concept question creation from tool call result
+            if (
+              existingCall.name === "mcp__coding-tutor__ask_concept_question" &&
+              existingCall.status === "completed" &&
+              existingCall.output
+            ) {
+              const fetchPromise = (async () => {
+                try {
+                  const result = JSON.parse(existingCall.output);
+                  if (result.questionId) {
+                    const data = await fetchSessionData(abortControllerRef.current?.signal);
+                    if (data && mountedRef.current) {
+                      setExercises(data.exercises);
+                      setConceptQuestions(data.conceptQuestions);
+                    }
+                  }
+                } catch (e) {
+                  console.error("Failed to parse concept question result:", e);
                 }
               })();
               pendingExerciseFetches.push(fetchPromise);
@@ -524,7 +600,15 @@ export function useChat({
         abortControllerRef.current = null;
       }
     },
-    [projectId, sessionId, onExerciseCreated, onSessionId, onTitleGenerated, fetchSessionWithRetry]
+    [
+      projectId,
+      sessionId,
+      onExerciseCreated,
+      onSessionId,
+      onTitleGenerated,
+      fetchSessionWithRetry,
+      fetchSessionData,
+    ]
   );
 
   // Submit exercise
@@ -688,6 +772,73 @@ The student chose to skip this exercise. No code was submitted. The exercise sta
     [exercises, projectId, sessionId]
   );
 
+  // Answer a concept question
+  const answerConceptQuestion = useCallback(
+    async (questionId: string, selectedOptionIndex: number) => {
+      if (!projectId || !sessionId) return;
+
+      const question = conceptQuestions[questionId];
+      if (!question) return;
+
+      const selectedOption = question.options[selectedOptionIndex];
+
+      // Update local state immediately for instant feedback
+      setConceptQuestions((prev) => ({
+        ...prev,
+        [questionId]: {
+          ...prev[questionId],
+          selectedOptionIndex,
+          status: selectedOption.correctness,
+        },
+      }));
+
+      // Persist to server
+      try {
+        await fetch(
+          `/api/projects/${projectId}/sessions/${sessionId}/concept-questions/${questionId}/answer`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ selectedOptionIndex }),
+          }
+        );
+      } catch (err) {
+        console.error("Error answering concept question:", err);
+      }
+
+      // Build answer metadata for the message
+      const conceptQuestionAnswer: ConceptQuestionAnswer = {
+        questionId,
+        question: question.question,
+        selectedOption: selectedOption.text,
+        correctness: selectedOption.correctness,
+      };
+
+      // Send answer to AI
+      const answerContent = `[Concept Answer]
+Question: "${question.question}"
+Selected: "${selectedOption.text}"
+Result: ${selectedOption.correctness}
+
+Please provide feedback on this answer. Explain why it is ${selectedOption.correctness === "correct" ? "correct" : selectedOption.correctness === "partial" ? "partially correct — what's missing or what would be a better answer" : "incorrect — what the correct answer is and why"}.`;
+
+      // Add user message with concept question answer metadata
+      const userMessage: Message = {
+        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        role: "user",
+        content: answerContent,
+        timestamp: new Date().toISOString(),
+        conceptQuestionAnswer,
+      };
+      messagesRef.current = [...messagesRef.current, userMessage];
+      setMessages(messagesRef.current);
+
+      // Send to AI for feedback
+      await sendMessage(answerContent, "concept_answer");
+    },
+    [projectId, sessionId, conceptQuestions, sendMessage]
+  );
+
   // Cancel ongoing request
   const cancelRequest = useCallback(() => {
     if (abortControllerRef.current) {
@@ -773,5 +924,8 @@ The student chose to skip this exercise. No code was submitted. The exercise sta
     submitExercise,
     skipExercise,
     retryExercise,
+    conceptQuestions,
+    setConceptQuestions,
+    answerConceptQuestion,
   };
 }
