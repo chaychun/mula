@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowUp, Bug } from "@phosphor-icons/react";
+import { ArrowUp } from "@phosphor-icons/react";
 import { PromptInput, PromptInputTextarea, PromptInputActions } from "@/components/ui/prompt-input";
 
 const showDevTools = process.env.NEXT_PUBLIC_DEV_TOOLS === "true";
@@ -36,26 +36,23 @@ export default function MessageInput({
     <PromptInput value={input} onValueChange={setInput} onSubmit={handleSubmit} disabled={disabled}>
       <PromptInputTextarea placeholder={placeholder} />
       <PromptInputActions className="flex items-center justify-between px-3 py-2">
-        <div className="flex items-center gap-2">
+        <span className="text-[10px] text-muted-foreground">Press Enter to send</span>
+        <div className="flex items-center gap-3">
           {showDevTools && onTestingModeChange && (
-            <button
-              type="button"
-              onClick={() => onTestingModeChange(!testingMode)}
-              className={`flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium transition-colors ${
-                testingMode
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Bug size={12} weight={testingMode ? "fill" : "regular"} />
-              Testing
-            </button>
+            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={testingMode ?? false}
+                onChange={(e) => onTestingModeChange(e.target.checked)}
+                className="accent-primary"
+              />
+              <span className="text-[10px] text-muted-foreground">testing mode</span>
+            </label>
           )}
-          <span className="text-[10px] text-muted-foreground">Press Enter to send</span>
+          <Button size="icon-sm" onClick={handleSubmit} disabled={disabled || !input.trim()}>
+            <ArrowUp size={16} weight="bold" />
+          </Button>
         </div>
-        <Button size="icon-sm" onClick={handleSubmit} disabled={disabled || !input.trim()}>
-          <ArrowUp size={16} weight="bold" />
-        </Button>
       </PromptInputActions>
     </PromptInput>
   );
