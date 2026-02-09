@@ -65,6 +65,13 @@ export async function getSession(projectId: string, sessionId: string): Promise<
     session.conceptQuestions = {};
   }
 
+  // Migrate exercises missing `type` field
+  for (const exercise of Object.values(session.exercises)) {
+    if (!exercise.type) {
+      exercise.type = "fill_in_blank";
+    }
+  }
+
   return session;
 }
 
@@ -88,6 +95,13 @@ export async function updateSession(
     }
     if (!session.conceptQuestions) {
       session.conceptQuestions = {};
+    }
+
+    // Migrate exercises missing `type` field
+    for (const exercise of Object.values(session.exercises)) {
+      if (!exercise.type) {
+        exercise.type = "fill_in_blank";
+      }
     }
 
     return {
