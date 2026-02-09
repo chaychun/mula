@@ -10,8 +10,10 @@ interface BlankPosition {
   index: number;
   line: number; // 1-based
   startColumn: number; // 1-based
-  endColumn: number; // 1-based, exclusive (startColumn + marker length)
+  endColumn: number; // 1-based, exclusive
 }
+
+const MIN_BLANK_WIDTH = 3;
 
 /** Parse starterCode to find all ___ positions */
 function findBlanks(code: string): BlankPosition[] {
@@ -38,19 +40,14 @@ function findBlanks(code: string): BlankPosition[] {
 }
 
 /**
- * Given starter code blanks and optional initial values, compute:
- * 1. The code string with blanks replaced by values (or kept as ___)
- * 2. The adjusted ranges for each blank in the resulting code
+ * Replace every ___ with the corresponding initial value (or empty string).
+ * Returns the resulting code and the adjusted blank ranges.
  */
 function buildInitialState(
   starterCode: string,
   blanks: BlankPosition[],
   initialValues?: Record<string, string>
 ): { code: string; ranges: BlankPosition[] } {
-  if (!initialValues || Object.keys(initialValues).length === 0) {
-    return { code: starterCode, ranges: blanks };
-  }
-
   const lines = starterCode.split("\n");
   const adjustedRanges: BlankPosition[] = [];
 
@@ -64,14 +61,14 @@ function buildInitialState(
 
   for (const [lineNum, lineBlanks] of blanksByLine) {
     let line = lines[lineNum - 1];
-    let columnShift = 0; // Track how much the column has shifted from replacements
+    let columnShift = 0;
 
     for (const blank of lineBlanks) {
-      const value = initialValues[String(blank.index)] ?? "___";
+      // Use initial value if available, otherwise empty string (not ___)
+      const value = initialValues?.[String(blank.index)] ?? "";
       const adjustedStart = blank.startColumn + columnShift;
       const adjustedEnd = adjustedStart + value.length;
 
-      // Replace in the line string
       const beforeBlank = line.substring(0, adjustedStart - 1);
       const afterBlank = line.substring(adjustedStart - 1 + 3); // skip original ___
       line = beforeBlank + value + afterBlank;
@@ -83,13 +80,13 @@ function buildInitialState(
         endColumn: adjustedEnd,
       });
 
-      columnShift += value.length - 3; // difference from original ___ (3 chars)
+      columnShift += value.length - 3;
     }
 
     lines[lineNum - 1] = line;
   }
 
-  // Add blanks that weren't on grouped lines (shouldn't happen, but safety)
+  // Safety: add blanks not on grouped lines
   for (const blank of blanks) {
     if (!adjustedRanges.find((r) => r.index === blank.index)) {
       adjustedRanges.push(blank);
@@ -116,8 +113,10 @@ export default function FillInBlankEditor({
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<typeof Monaco | null>(null);
   const constrainedInstanceRef = useRef<any>(null);
-  // Decoration collection tracks blank ranges as the user types
-  const decorationCollectionRef = useRef<Monaco.editor.IEditorDecorationsCollection | null>(null);
+  // Tracking collection: pure range tracking, never visually modified
+  const trackingCollectionRef = useRef<Monaco.editor.IEditorDecorationsCollection | null>(null);
+  // Visual collection: rebuilt on each change for styling + min-width padding
+  const visualCollectionRef = useRef<Monaco.editor.IEditorDecorationsCollection | null>(null);
   const blankCountRef = useRef(0);
   const modelListenerRef = useRef<Monaco.IDisposable | null>(null);
   const { resolvedTheme } = useTheme();
@@ -131,18 +130,18 @@ export default function FillInBlankEditor({
     initialBlankValues
   );
 
-  /** Extract current blank values from decoration-tracked ranges */
+  /** Extract current blank values from tracking decoration ranges */
   const extractBlankValues = useCallback(() => {
     const editor = editorRef.current;
-    const collection = decorationCollectionRef.current;
-    if (!editor || !collection) return;
+    const tracking = trackingCollectionRef.current;
+    if (!editor || !tracking) return;
 
     const model = editor.getModel();
     if (!model) return;
 
     const values: Record<string, string> = {};
     for (let i = 0; i < blankCountRef.current; i++) {
-      const range = collection.getRange(i);
+      const range = tracking.getRange(i);
       if (range) {
         values[String(i)] = model.getValueInRange(range);
       }
@@ -164,7 +163,7 @@ export default function FillInBlankEditor({
       const model = editor.getModel();
       if (!model) return;
 
-      // Build restriction ranges from the (possibly adjusted) initial ranges
+      // Set up restriction zones (editable areas, everything else is read-only)
       const restrictions = initialRanges.map((range, idx) => ({
         range: [range.line, range.startColumn, range.line, range.endColumn] as [
           number,
@@ -175,23 +174,56 @@ export default function FillInBlankEditor({
         label: `blank-${idx}`,
         allowMultiline: false,
       }));
-
       instance.addRestrictionsTo(model, restrictions);
 
-      // Create tracked decorations for blank zones — these move as the user types
-      const decorations = initialRanges.map((range) => ({
+      // Tracking collection: stable range tracking via stickiness
+      const trackingDecorations = initialRanges.map((range) => ({
         range: new monaco.Range(range.line, range.startColumn, range.line, range.endColumn),
         options: {
-          className: "fill-in-blank-editable",
           stickiness: monaco.editor.TrackedRangeStickiness.AlwaysGrowsWhenTypingAtEdges,
         },
       }));
-      decorationCollectionRef.current = editor.createDecorationsCollection(decorations);
+      trackingCollectionRef.current = editor.createDecorationsCollection(trackingDecorations);
 
-      // Listen for content changes directly on the model — more reliable than
-      // @monaco-editor/react's onChange when constrained-editor-plugin is active
+      // Visual collection: dynamic styling with min-width padding
+      visualCollectionRef.current = editor.createDecorationsCollection([]);
+
+      const updateVisuals = () => {
+        const tracking = trackingCollectionRef.current;
+        const visual = visualCollectionRef.current;
+        if (!tracking || !visual) return;
+
+        const decos: Monaco.editor.IModelDeltaDecoration[] = [];
+        for (let i = 0; i < blankCountRef.current; i++) {
+          const range = tracking.getRange(i);
+          if (!range) continue;
+          const value = model.getValueInRange(range);
+          const padChars = Math.max(0, MIN_BLANK_WIDTH - value.length);
+
+          decos.push({
+            range,
+            options: {
+              className: "fill-in-blank-editable",
+              ...(padChars > 0
+                ? {
+                    after: {
+                      content: "\u00A0".repeat(padChars),
+                      inlineClassName: "fill-in-blank-padding",
+                    },
+                  }
+                : {}),
+            },
+          });
+        }
+        visual.set(decos);
+      };
+
+      // Listen for content changes directly on the model
       modelListenerRef.current = model.onDidChangeContent(() => {
-        requestAnimationFrame(() => extractBlankValues());
+        requestAnimationFrame(() => {
+          updateVisuals();
+          extractBlankValues();
+        });
       });
 
       // Focus the first blank
@@ -203,22 +235,21 @@ export default function FillInBlankEditor({
         editor.focus();
       }
 
-      // Tab navigation between blanks using live decoration positions
+      // Tab navigation between blanks using live tracking positions
       editor.addAction({
         id: "next-blank",
         label: "Jump to next blank",
         keybindings: [monaco.KeyCode.Tab],
         run: (ed) => {
-          const collection = decorationCollectionRef.current;
-          if (!collection) return;
+          const tracking = trackingCollectionRef.current;
+          if (!tracking) return;
 
           const pos = ed.getPosition();
           if (!pos) return;
 
-          // Find which blank the cursor is currently in
           let currentIdx = -1;
           for (let i = 0; i < blankCountRef.current; i++) {
-            const range = collection.getRange(i);
+            const range = tracking.getRange(i);
             if (range && range.containsPosition(pos)) {
               currentIdx = i;
               break;
@@ -226,7 +257,7 @@ export default function FillInBlankEditor({
           }
 
           const nextIdx = (currentIdx + 1) % blankCountRef.current;
-          const nextRange = collection.getRange(nextIdx);
+          const nextRange = tracking.getRange(nextIdx);
           if (nextRange) {
             ed.setPosition({
               lineNumber: nextRange.startLineNumber,
@@ -236,15 +267,17 @@ export default function FillInBlankEditor({
         },
       });
 
-      // Always extract initial blank values so state is populated even if user
-      // submits without typing (otherwise blankValues stays as {})
-      requestAnimationFrame(() => extractBlankValues());
+      // Initial visual update and value extraction
+      requestAnimationFrame(() => {
+        updateVisuals();
+        extractBlankValues();
+      });
     } catch (err) {
       console.error("Failed to initialize constrained editor:", err);
     }
   };
 
-  // Clean up constrained editor and model listener on unmount
+  // Clean up on unmount
   useEffect(() => {
     return () => {
       modelListenerRef.current?.dispose();
