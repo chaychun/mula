@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowUp, Check } from "@phosphor-icons/react";
+import { ArrowUp } from "@phosphor-icons/react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { PromptInput, PromptInputTextarea, PromptInputActions } from "@/components/ui/prompt-input";
 
 const showDevTools = process.env.NEXT_PUBLIC_DEV_TOOLS === "true";
@@ -39,24 +40,14 @@ export default function MessageInput({
         <span className="text-[10px] text-muted-foreground">Press Enter to send</span>
         <div className="flex items-center gap-3">
           {showDevTools && onTestingModeChange && (
-            <button
-              type="button"
-              onClick={() => onTestingModeChange(!testingMode)}
-              className="flex items-center gap-1.5 cursor-pointer select-none group"
-            >
-              <span
-                className={`flex items-center justify-center size-3.5 border transition-colors ${
-                  testingMode
-                    ? "bg-primary border-primary text-primary-foreground"
-                    : "border-muted-foreground/40 group-hover:border-foreground/60"
-                }`}
-              >
-                {testingMode && <Check size={10} weight="bold" />}
-              </span>
-              <span className="text-[10px] text-muted-foreground group-hover:text-foreground transition-colors">
-                testing mode
-              </span>
-            </button>
+            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+              <Checkbox
+                checked={testingMode ?? false}
+                onCheckedChange={(checked) => onTestingModeChange(checked === true)}
+                className="size-3.5"
+              />
+              <span className="text-[10px] text-muted-foreground">testing mode</span>
+            </label>
           )}
           <Button size="icon-sm" onClick={handleSubmit} disabled={disabled || !input.trim()}>
             <ArrowUp size={16} weight="bold" />
