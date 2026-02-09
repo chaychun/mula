@@ -122,8 +122,11 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    @apply overscroll-none overflow-hidden h-full;
+  }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground overscroll-none h-full overflow-hidden;
   }
 }
 

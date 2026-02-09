@@ -19,7 +19,9 @@ export default defineConfig({
   clearScreen: false,
   server: {
     port: 5173,
-    strictPort: true,
+    // In Tauri mode, strict port is needed so devUrl matches.
+    // In browser-only mode, auto-resolve to the next available port.
+    strictPort: !!host,
     host: host || false,
     hmr: host ? { protocol: "ws", host, port: 5174 } : undefined,
     watch: {

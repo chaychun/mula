@@ -55,9 +55,9 @@ export default function AppSidebar({
 
   return (
     <Sidebar>
-      {/* Header with branding */}
-      <SidebarHeader className="border-b border-sidebar-border">
-        <div className="flex items-center gap-2 px-2">
+      {/* Header with branding — extra top padding in Tauri for traffic lights */}
+      <SidebarHeader className="border-b border-sidebar-border [[data-tauri]_&]:pt-10">
+        <div data-tauri-drag-region className="flex items-center gap-2 px-2">
           <GraduationCap className="size-5" weight="bold" />
           <span className="text-sm font-bold">Coding Tutor</span>
         </div>

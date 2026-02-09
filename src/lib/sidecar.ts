@@ -3,14 +3,34 @@ let sidecarPort: number | null = null;
 let authToken: string | null = null;
 
 /**
- * Initialize sidecar connection info from Tauri.
- * Called once on app startup.
+ * Probe ports starting from `start` to find a running sidecar.
+ * Returns the first port that responds to /health, or null.
+ */
+async function findSidecarPort(start: number, maxAttempts = 10): Promise<number | null> {
+  for (let port = start; port < start + maxAttempts; port++) {
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/health`, {
+        signal: AbortSignal.timeout(500),
+      });
+      if (res.ok) return port;
+    } catch {
+      // Port not responding, try next
+    }
+  }
+  return null;
+}
+
+/**
+ * Initialize sidecar connection info.
+ * In Tauri mode, uses invoke() to get port + auth token from Rust.
+ * In browser dev mode, probes for a running sidecar starting at port 3001.
  */
 export async function initSidecar(): Promise<void> {
-  // In development (Vite dev server without Tauri), use defaults
+  // In development (Vite dev server without Tauri), discover the sidecar
   if (!window.__TAURI_INTERNALS__) {
-    sidecarPort = 3001;
-    authToken = process.env.AUTH_TOKEN || "";
+    const port = await findSidecarPort(3001);
+    sidecarPort = port ?? 3001; // Fall back to 3001 if nothing found yet
+    authToken = "";
     return;
   }
 

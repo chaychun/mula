@@ -108,6 +108,36 @@ fn read_api_key(app: &AppHandle) -> Option<String> {
     std::fs::read_to_string(key_path).ok()
 }
 
+/// Locate the `claude` CLI binary for the Agent SDK.
+/// Checks well-known install paths first, then searches PATH.
+fn find_claude_path() -> String {
+    // Check well-known locations
+    if let Some(home) = std::env::var_os("HOME") {
+        let home = std::path::PathBuf::from(home);
+        for candidate in [
+            home.join(".local/bin/claude"),
+            home.join(".claude/local/claude"),
+        ] {
+            if candidate.exists() {
+                return candidate.to_string_lossy().to_string();
+            }
+        }
+    }
+
+    // Search PATH
+    if let Ok(path_var) = std::env::var("PATH") {
+        for dir in path_var.split(':') {
+            let candidate = std::path::PathBuf::from(dir).join("claude");
+            if candidate.exists() {
+                return candidate.to_string_lossy().to_string();
+            }
+        }
+    }
+
+    // Fallback — let the SDK try to find it
+    String::new()
+}
+
 fn spawn_sidecar(app: &AppHandle, state: &AppState) -> Result<(), String> {
     let port = find_available_port();
     let auth_token = generate_auth_token();
@@ -120,8 +150,12 @@ fn spawn_sidecar(app: &AppHandle, state: &AppState) -> Result<(), String> {
     std::fs::create_dir_all(&data_dir).map_err(|e| format!("Failed to create dir: {}", e))?;
     let db_path = data_dir.join("data.db");
 
-    // Read API key
+    // Read API key: stored file first, then environment variables as fallback
     let api_key = read_api_key(app).unwrap_or_default();
+    let oauth_token = std::env::var("CLAUDE_CODE_OAUTH_TOKEN").unwrap_or_default();
+
+    // Find the claude CLI path for the Agent SDK
+    let claude_path = find_claude_path();
 
     // Spawn sidecar using Tauri shell plugin
     let shell = app.shell();
@@ -131,7 +165,9 @@ fn spawn_sidecar(app: &AppHandle, state: &AppState) -> Result<(), String> {
         .env("PORT", port.to_string())
         .env("AUTH_TOKEN", auth_token.clone())
         .env("DATABASE_PATH", db_path.to_string_lossy().to_string())
-        .env("ANTHROPIC_API_KEY", api_key);
+        .env("ANTHROPIC_API_KEY", api_key)
+        .env("CLAUDE_CODE_OAUTH_TOKEN", oauth_token)
+        .env("CLAUDE_PATH", claude_path);
 
     let (_rx, _child) = sidecar_command
         .spawn()
@@ -150,6 +186,9 @@ fn spawn_sidecar(app: &AppHandle, state: &AppState) -> Result<(), String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Load .env file so CLAUDE_CODE_OAUTH_TOKEN and other vars are available
+    dotenvy::dotenv().ok();
+
     let app_state = AppState {
         sidecar: Mutex::new(SidecarState {
             port: 0,

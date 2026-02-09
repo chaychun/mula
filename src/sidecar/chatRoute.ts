@@ -69,6 +69,9 @@ Provide a helpful hint that guides them toward the solution without giving away 
         resume: resumeSessionId,
         permissionMode: "bypassPermissions",
         maxTurns: 10,
+        // In compiled binary mode, the SDK can't auto-detect the claude CLI path.
+        // Use CLAUDE_PATH env var if set, otherwise let the SDK find it.
+        ...(process.env.CLAUDE_PATH ? { pathToClaudeCodeExecutable: process.env.CLAUDE_PATH } : {}),
       },
     })) {
       const msg = sdkMessage as Record<string, unknown>;

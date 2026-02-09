@@ -1,8 +1,8 @@
-import Database from "better-sqlite3";
+import { Database } from "bun:sqlite";
 import * as path from "path";
 import * as fs from "fs";
 
-let db: Database.Database | null = null;
+let db: Database | null = null;
 
 const CURRENT_SCHEMA_VERSION = 1;
 
@@ -100,14 +100,14 @@ CREATE TABLE IF NOT EXISTS progress (
 CREATE INDEX IF NOT EXISTS idx_progress_project_id ON progress(project_id);
 `;
 
-export function getDb(): Database.Database {
+export function getDb(): Database {
   if (!db) {
     throw new Error("Database not initialized. Call initDatabase() first.");
   }
   return db;
 }
 
-export function initDatabase(databasePath: string): Database.Database {
+export function initDatabase(databasePath: string): Database {
   // Ensure directory exists
   const dir = path.dirname(databasePath);
   if (!fs.existsSync(dir)) {
@@ -117,9 +117,9 @@ export function initDatabase(databasePath: string): Database.Database {
   db = new Database(databasePath);
 
   // Enable WAL mode for better concurrent read performance
-  db.pragma("journal_mode = WAL");
+  db.exec("PRAGMA journal_mode = WAL");
   // Enable foreign keys
-  db.pragma("foreign_keys = ON");
+  db.exec("PRAGMA foreign_keys = ON");
 
   // Run schema creation
   db.exec(SCHEMA_SQL);

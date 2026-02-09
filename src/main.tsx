@@ -8,6 +8,11 @@ import Home from "@/pages/Home";
 import SessionPage from "@/pages/SessionPage";
 import "@/app/globals.css";
 
+// Mark Tauri mode on <html> so CSS can add traffic-light inset
+if (window.__TAURI_INTERNALS__) {
+  document.documentElement.dataset.tauri = "";
+}
+
 // Initialize sidecar connection before rendering.
 // In Tauri, this fetches the port + auth token from the Rust core via invoke().
 // In dev mode (no Tauri), it falls back to localhost:3001 defaults.

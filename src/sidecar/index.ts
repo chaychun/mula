@@ -5,7 +5,7 @@ import { router } from "./routes";
 import { handleChat } from "./chatRoute";
 
 // Read configuration from environment (injected by Rust shell)
-const PORT = parseInt(process.env.PORT || "3001", 10);
+const PREFERRED_PORT = parseInt(process.env.PORT || "3001", 10);
 const AUTH_TOKEN = process.env.AUTH_TOKEN || "";
 const DATABASE_PATH = process.env.DATABASE_PATH || "./data.db";
 
@@ -56,19 +56,33 @@ app.use(router);
 // Chat endpoint (SSE streaming)
 app.post("/api/chat", handleChat);
 
-// Start server
-const server = app.listen(PORT, "127.0.0.1", () => {
-  console.log(`[sidecar] Server listening on http://127.0.0.1:${PORT}`);
-});
-
-// Graceful shutdown
-function shutdown() {
-  console.log("[sidecar] Shutting down...");
-  server.close(() => {
-    closeDatabase();
-    process.exit(0);
+// Start server — try preferred port, then auto-increment if taken
+function startServer(port: number, maxAttempts = 10): void {
+  const server = app.listen(port, "127.0.0.1", () => {
+    console.log(`[sidecar] Server listening on http://127.0.0.1:${port}`);
   });
+
+  server.on("error", (err: NodeJS.ErrnoException) => {
+    if (err.code === "EADDRINUSE" && port - PREFERRED_PORT < maxAttempts) {
+      console.warn(`[sidecar] Port ${port} in use, trying ${port + 1}...`);
+      startServer(port + 1, maxAttempts);
+    } else {
+      console.error(`[sidecar] Failed to start server:`, err.message);
+      process.exit(1);
+    }
+  });
+
+  // Graceful shutdown
+  function shutdown() {
+    console.log("[sidecar] Shutting down...");
+    server.close(() => {
+      closeDatabase();
+      process.exit(0);
+    });
+  }
+
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
 }
 
-process.on("SIGTERM", shutdown);
-process.on("SIGINT", shutdown);
+startServer(PREFERRED_PORT);
