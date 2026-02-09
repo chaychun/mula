@@ -14,6 +14,9 @@ interface BlankPosition {
 }
 
 const MIN_BLANK_WIDTH = 3;
+// Zero-width space: invisible anchor char that gives decorations a non-zero
+// range so Monaco renders the after-injected padding text
+const ZWS = "\u200B";
 
 /** Parse starterCode to find all ___ positions */
 function findBlanks(code: string): BlankPosition[] {
@@ -64,8 +67,9 @@ function buildInitialState(
     let columnShift = 0;
 
     for (const blank of lineBlanks) {
-      // Use initial value if available, otherwise empty string (not ___)
-      const value = initialValues?.[String(blank.index)] ?? "";
+      // Use initial value if available, otherwise a zero-width space anchor
+      // (ZWS gives the decoration a non-zero range so padding renders)
+      const value = initialValues?.[String(blank.index)] || ZWS;
       const adjustedStart = blank.startColumn + columnShift;
       const adjustedEnd = adjustedStart + value.length;
 
@@ -143,7 +147,8 @@ export default function FillInBlankEditor({
     for (let i = 0; i < blankCountRef.current; i++) {
       const range = tracking.getRange(i);
       if (range) {
-        values[String(i)] = model.getValueInRange(range);
+        // Strip zero-width space anchor from extracted values
+        values[String(i)] = model.getValueInRange(range).replaceAll(ZWS, "");
       }
     }
     onBlankValuesChange(values);
@@ -197,8 +202,9 @@ export default function FillInBlankEditor({
         for (let i = 0; i < blankCountRef.current; i++) {
           const range = tracking.getRange(i);
           if (!range) continue;
-          const value = model.getValueInRange(range);
-          const padChars = Math.max(0, MIN_BLANK_WIDTH - value.length);
+          const rawValue = model.getValueInRange(range);
+          const visibleLength = rawValue.replaceAll(ZWS, "").length;
+          const padChars = Math.max(0, MIN_BLANK_WIDTH - visibleLength);
 
           decos.push({
             range,
