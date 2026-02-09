@@ -40,8 +40,12 @@ export default function MessageInput({
         <span className="text-[10px] text-muted-foreground">Press Enter to send</span>
         <div className="flex items-center gap-3">
           {showDevTools && onTestingModeChange && (
-            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+            <label
+              htmlFor="testing-mode"
+              className="flex items-center gap-1.5 cursor-pointer select-none"
+            >
               <Checkbox
+                id="testing-mode"
                 checked={testingMode ?? false}
                 onCheckedChange={(checked) => onTestingModeChange(checked === true)}
                 className="size-3.5"

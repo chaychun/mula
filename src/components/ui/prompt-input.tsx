@@ -47,7 +47,6 @@ function PromptInput({
   onSubmit,
   children,
   disabled = false,
-  onClick,
   ...props
 }: PromptInputProps) {
   const [internalValue, setInternalValue] = useState(value || "");
@@ -56,11 +55,6 @@ function PromptInput({
   const handleChange = (newValue: string) => {
     setInternalValue(newValue);
     onValueChange?.(newValue);
-  };
-
-  const handleClick: React.MouseEventHandler<HTMLDivElement> = (e) => {
-    if (!disabled) textareaRef.current?.focus();
-    onClick?.(e);
   };
 
   return (
@@ -76,7 +70,6 @@ function PromptInput({
       }}
     >
       <div
-        onClick={handleClick}
         className={cn(
           "ring-1 ring-border bg-card cursor-text focus-within:ring-primary/50 transition-all",
           disabled && "cursor-not-allowed opacity-60",
