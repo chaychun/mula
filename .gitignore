@@ -38,3 +38,6 @@ package-lock.json
 
 # local development data
 /.dev-data/
+
+# git worktrees
+.worktrees/
