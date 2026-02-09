@@ -20,12 +20,9 @@ createRoot(document.getElementById("root")!).render(
               </SidebarProvider>
             }
           />
-          <Route
-            path="/projects/:projectId/sessions/:sessionId"
-            element={<SessionPage />}
-          />
+          <Route path="/projects/:projectId/sessions/:sessionId" element={<SessionPage />} />
         </Routes>
       </BrowserRouter>
     </ThemeProvider>
-  </StrictMode>,
+  </StrictMode>
 );

@@ -18,14 +18,14 @@ export default function Home() {
     (projectId: string) => {
       fetchSessions(projectId);
     },
-    [fetchSessions],
+    [fetchSessions]
   );
 
   const handleSelectSession = useCallback(
     (projectId: string, sessionId: string) => {
       navigate(`/projects/${projectId}/sessions/${sessionId}`);
     },
-    [navigate],
+    [navigate]
   );
 
   const handleCreateProject = useCallback(
@@ -34,7 +34,7 @@ export default function Home() {
       const session = await createSession(project.id);
       navigate(`/projects/${project.id}/sessions/${session.id}`);
     },
-    [createProject, createSession, navigate],
+    [createProject, createSession, navigate]
   );
 
   const handleCreateSession = useCallback(
@@ -42,21 +42,21 @@ export default function Home() {
       const session = await createSession(projectId);
       navigate(`/projects/${projectId}/sessions/${session.id}`);
     },
-    [createSession, navigate],
+    [createSession, navigate]
   );
 
   const handleRenameProject = useCallback(
     async (projectId: string, newName: string) => {
       await updateProject(projectId, { name: newName });
     },
-    [updateProject],
+    [updateProject]
   );
 
   const handleRenameSession = useCallback(
     async (projectId: string, sessionId: string, newTitle: string) => {
       await updateSession(projectId, sessionId, { title: newTitle });
     },
-    [updateSession],
+    [updateSession]
   );
 
   return (

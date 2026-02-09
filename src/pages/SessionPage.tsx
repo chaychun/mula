@@ -116,14 +116,14 @@ export default function SessionPage() {
     (newProjectId: string) => {
       fetchSessions(newProjectId);
     },
-    [fetchSessions],
+    [fetchSessions]
   );
 
   const handleSelectSession = useCallback(
     (newProjectId: string, newSessionId: string) => {
       navigate(`/projects/${newProjectId}/sessions/${newSessionId}`);
     },
-    [navigate],
+    [navigate]
   );
 
   const handleCreateProject = useCallback(
@@ -132,7 +132,7 @@ export default function SessionPage() {
       const session = await createSession(project.id);
       navigate(`/projects/${project.id}/sessions/${session.id}`);
     },
-    [createProject, createSession, navigate],
+    [createProject, createSession, navigate]
   );
 
   const handleCreateSession = useCallback(
@@ -140,28 +140,28 @@ export default function SessionPage() {
       const session = await createSession(targetProjectId);
       navigate(`/projects/${targetProjectId}/sessions/${session.id}`);
     },
-    [createSession, navigate],
+    [createSession, navigate]
   );
 
   const handleSendMessage = useCallback(
     (message: string) => {
       sendMessage(message, "message", undefined, undefined, testingMode);
     },
-    [sendMessage, testingMode],
+    [sendMessage, testingMode]
   );
 
   const handleRenameProject = useCallback(
     async (targetProjectId: string, newName: string) => {
       await updateProject(targetProjectId, { name: newName });
     },
-    [updateProject],
+    [updateProject]
   );
 
   const handleRenameSession = useCallback(
     async (targetProjectId: string, targetSessionId: string, newTitle: string) => {
       await updateSession(targetProjectId, targetSessionId, { title: newTitle });
     },
-    [updateSession],
+    [updateSession]
   );
 
   return (
