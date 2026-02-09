@@ -119,6 +119,7 @@ export default function FillInBlankEditor({
   // Decoration collection tracks blank ranges as the user types
   const decorationCollectionRef = useRef<Monaco.editor.IEditorDecorationsCollection | null>(null);
   const blankCountRef = useRef(0);
+  const modelListenerRef = useRef<Monaco.IDisposable | null>(null);
   const { resolvedTheme } = useTheme();
 
   const monacoLanguage = languageMap[language.toLowerCase()] || "plaintext";
@@ -165,22 +166,33 @@ export default function FillInBlankEditor({
 
       // Build restriction ranges from the (possibly adjusted) initial ranges
       const restrictions = initialRanges.map((range, idx) => ({
-        range: [range.line, range.startColumn, range.line, range.endColumn] as [number, number, number, number],
+        range: [range.line, range.startColumn, range.line, range.endColumn] as [
+          number,
+          number,
+          number,
+          number,
+        ],
         label: `blank-${idx}`,
         allowMultiline: false,
       }));
 
       instance.addRestrictionsTo(model, restrictions);
 
-      // Create tracked decorations for blank zones -- these move as the user types
+      // Create tracked decorations for blank zones — these move as the user types
       const decorations = initialRanges.map((range) => ({
         range: new monaco.Range(range.line, range.startColumn, range.line, range.endColumn),
         options: {
           className: "fill-in-blank-editable",
-          stickiness: monaco.editor.TrackedRangeStickiness.GrowsOnlyWhenTypingBefore,
+          stickiness: monaco.editor.TrackedRangeStickiness.AlwaysGrowsWhenTypingAtEdges,
         },
       }));
       decorationCollectionRef.current = editor.createDecorationsCollection(decorations);
+
+      // Listen for content changes directly on the model — more reliable than
+      // @monaco-editor/react's onChange when constrained-editor-plugin is active
+      modelListenerRef.current = model.onDidChangeContent(() => {
+        requestAnimationFrame(() => extractBlankValues());
+      });
 
       // Focus the first blank
       if (initialRanges.length > 0) {
@@ -224,23 +236,18 @@ export default function FillInBlankEditor({
         },
       });
 
-      // Extract initial values (in case of retry with pre-filled values)
-      if (initialBlankValues && Object.keys(initialBlankValues).length > 0) {
-        // Small delay to let the decoration collection settle after init
-        requestAnimationFrame(() => extractBlankValues());
-      }
+      // Always extract initial blank values so state is populated even if user
+      // submits without typing (otherwise blankValues stays as {})
+      requestAnimationFrame(() => extractBlankValues());
     } catch (err) {
       console.error("Failed to initialize constrained editor:", err);
     }
   };
 
-  const handleChange = useCallback(() => {
-    extractBlankValues();
-  }, [extractBlankValues]);
-
-  // Clean up constrained editor on unmount
+  // Clean up constrained editor and model listener on unmount
   useEffect(() => {
     return () => {
+      modelListenerRef.current?.dispose();
       if (constrainedInstanceRef.current) {
         try {
           constrainedInstanceRef.current.disposeConstrainer();
@@ -257,7 +264,6 @@ export default function FillInBlankEditor({
         height="100%"
         language={monacoLanguage}
         defaultValue={initialCode}
-        onChange={handleChange}
         onMount={handleEditorMount}
         theme={resolvedTheme === "dark" ? "vs-dark" : "vs-light"}
         options={{

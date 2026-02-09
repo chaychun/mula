@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import type { Exercise } from "@/lib/types";
 import ExerciseHeader from "./ExerciseHeader";
 import ExerciseInstructions from "./ExerciseInstructions";
@@ -42,6 +42,14 @@ export default function ExercisePanel({
     return {};
   });
 
+  // Ref tracks latest blank values for reliable access at submit time
+  // (avoids stale closure if React hasn't re-rendered yet)
+  const blankValuesRef = useRef<Record<string, string>>({});
+  const handleBlankValuesChange = useCallback((values: Record<string, string>) => {
+    blankValuesRef.current = values;
+    setBlankValues(values);
+  }, []);
+
   const [isPending, setIsPending] = useState(false);
   const pendingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -62,10 +70,13 @@ export default function ExercisePanel({
     if (exercise.attempts.length > 0) {
       const lastAttempt = exercise.attempts[exercise.attempts.length - 1];
       setCode(lastAttempt.code);
-      setBlankValues(lastAttempt.blankValues ?? {});
+      const bv = lastAttempt.blankValues ?? {};
+      setBlankValues(bv);
+      blankValuesRef.current = bv;
     } else {
       setCode(exercise.starterCode);
       setBlankValues({});
+      blankValuesRef.current = {};
     }
   }, [exercise.id, exercise.attempts, exercise.starterCode]);
 
@@ -77,7 +88,7 @@ export default function ExercisePanel({
     pendingTimeoutRef.current = timeoutId;
 
     if (exerciseType === "fill_in_blank") {
-      onSubmit(exercise.starterCode, blankValues);
+      onSubmit(exercise.starterCode, blankValuesRef.current);
     } else {
       onSubmit(code);
     }
@@ -111,7 +122,7 @@ export default function ExercisePanel({
               key={exercise.id}
               starterCode={exercise.starterCode}
               language={exercise.language}
-              onBlankValuesChange={setBlankValues}
+              onBlankValuesChange={handleBlankValuesChange}
               initialBlankValues={
                 exercise.attempts.length > 0
                   ? exercise.attempts[exercise.attempts.length - 1].blankValues
