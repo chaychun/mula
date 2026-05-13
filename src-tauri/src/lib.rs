@@ -282,15 +282,10 @@ fn find_claude_path() -> String {
     String::new()
 }
 
-/// Resolve the active API key to inject into the sidecar.
-/// Empty string means "use the local Claude Code CLI's own auth".
-///
-/// Precedence matches `get_credential_status`: stored API key > local CLI.
+/// Returns the stored API key if present, else empty string. The sidecar
+/// treats empty as "defer to the local Claude Code CLI's own auth."
 fn resolve_api_key(app: &AppHandle) -> String {
-    if let Some(key) = read_credential(app, API_KEY_FILE) {
-        return key;
-    }
-    String::new()
+    read_credential(app, API_KEY_FILE).unwrap_or_default()
 }
 
 fn spawn_sidecar(app: &AppHandle, state: &AppState) -> Result<(), String> {
@@ -314,6 +309,9 @@ fn spawn_sidecar(app: &AppHandle, state: &AppState) -> Result<(), String> {
         .env("PORT", port.to_string())
         .env("AUTH_TOKEN", auth_token.clone())
         .env("DATABASE_PATH", db_path.to_string_lossy().to_string())
+        // Always set ANTHROPIC_API_KEY explicitly — empty string is the
+        // intentional signal for "let the Claude CLI's keychain auth resolve
+        // this." This also overrides any shell-exported value the user may have.
         .env("ANTHROPIC_API_KEY", api_key)
         .env("CLAUDE_PATH", claude_path);
 
