@@ -12,13 +12,12 @@ import { reinitSidecar, sidecarFetch } from "@/lib/sidecar";
 
 export type CredentialKind = "local_cli" | "api_key";
 export type StoredCredentialKind = "api_key";
-export type CredentialSource = "stored" | "env" | "keychain";
+export type CredentialSource = "stored" | "keychain";
 
 export interface CredentialStatus {
   active_kind: CredentialKind | null;
   active_source: CredentialSource | null;
   has_api_key_stored: boolean;
-  has_api_key_env: boolean;
   local_cli_installed: boolean;
   local_cli_authenticated: boolean;
 }
@@ -39,7 +38,6 @@ const EMPTY: CredentialStatus = {
   active_kind: null,
   active_source: null,
   has_api_key_stored: false,
-  has_api_key_env: false,
   local_cli_installed: false,
   local_cli_authenticated: false,
 };
