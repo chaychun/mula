@@ -25,5 +25,4 @@ tauri-plugin-stronghold = "2"
 tauri-plugin-shell = "2"
 rand = "0.8"
 portpicker = "0.1"
-dotenvy = "0.15"
 tokio = { version = "1", features = ["process", "time", "sync"] }
