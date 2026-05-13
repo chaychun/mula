@@ -35,10 +35,9 @@ struct SidecarStatus {
 struct CredentialStatus {
     /// "local_cli" | "api_key" | null
     active_kind: Option<String>,
-    /// "stored" | "env" | "keychain" | null
+    /// "stored" | "keychain" | null
     active_source: Option<String>,
     has_api_key_stored: bool,
-    has_api_key_env: bool,
     /// `claude` CLI binary is present on the system.
     local_cli_installed: bool,
     /// `claude` CLI has stored credentials (keychain on macOS, config file elsewhere).
@@ -211,19 +210,14 @@ fn local_cli_has_credentials() -> bool {
 #[tauri::command]
 fn get_credential_status(app: AppHandle) -> Result<CredentialStatus, String> {
     let has_api_key_stored = read_credential(&app, API_KEY_FILE).is_some();
-    let has_api_key_env = std::env::var("ANTHROPIC_API_KEY")
-        .map(|v| !v.trim().is_empty())
-        .unwrap_or(false);
     let local_cli_installed = !find_claude_path().is_empty();
     let local_cli_authenticated = local_cli_installed && local_cli_has_credentials();
 
-    // Precedence: stored API key override > local CLI > env API key.
+    // Precedence: stored API key override > local CLI.
     let (active_kind, active_source) = if has_api_key_stored {
         (Some("api_key".into()), Some("stored".into()))
     } else if local_cli_authenticated {
         (Some("local_cli".into()), Some("keychain".into()))
-    } else if has_api_key_env {
-        (Some("api_key".into()), Some("env".into()))
     } else {
         (None, None)
     };
@@ -232,7 +226,6 @@ fn get_credential_status(app: AppHandle) -> Result<CredentialStatus, String> {
         active_kind,
         active_source,
         has_api_key_stored,
-        has_api_key_env,
         local_cli_installed,
         local_cli_authenticated,
     })
@@ -292,18 +285,10 @@ fn find_claude_path() -> String {
 /// Resolve the active API key to inject into the sidecar.
 /// Empty string means "use the local Claude Code CLI's own auth".
 ///
-/// Precedence matches `get_credential_status`: stored API key > local CLI > env.
+/// Precedence matches `get_credential_status`: stored API key > local CLI.
 fn resolve_api_key(app: &AppHandle) -> String {
     if let Some(key) = read_credential(app, API_KEY_FILE) {
         return key;
-    }
-    if local_cli_has_credentials() && !find_claude_path().is_empty() {
-        return String::new();
-    }
-    if let Ok(key) = std::env::var("ANTHROPIC_API_KEY") {
-        if !key.trim().is_empty() {
-            return key;
-        }
     }
     String::new()
 }
@@ -357,9 +342,6 @@ fn spawn_sidecar(app: &AppHandle, state: &AppState) -> Result<(), String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Load .env so CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_API_KEY are available as fallback
-    dotenvy::dotenv().ok();
-
     let app_state = AppState {
         sidecar: Mutex::new(SidecarState {
             port: 0,

@@ -49,12 +49,7 @@ export default function AuthSettingsModal({ isOpen, onClose }: AuthSettingsModal
   const activeLabel = useMemo(() => {
     if (!status.active_kind) return "Not configured";
     const kind = status.active_kind === "local_cli" ? "Local Claude Code" : "API key";
-    const source =
-      status.active_source === "stored"
-        ? "stored in app"
-        : status.active_source === "keychain"
-          ? "via system keychain"
-          : "from .env";
+    const source = status.active_source === "stored" ? "stored in app" : "via system keychain";
     return `${kind} (${source})`;
   }, [status]);
 
@@ -206,7 +201,6 @@ export default function AuthSettingsModal({ isOpen, onClose }: AuthSettingsModal
           <div className="flex items-center justify-between gap-2">
             <div className="text-xs text-muted-foreground">
               {status.has_api_key_stored && "Key currently stored."}
-              {!status.has_api_key_stored && status.has_api_key_env && "Using key from .env."}
             </div>
             <div className="flex gap-2">
               {status.has_api_key_stored && (
@@ -235,8 +229,8 @@ export default function AuthSettingsModal({ isOpen, onClose }: AuthSettingsModal
 
         {!tauriAvailable && (
           <div className="border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-            Running in browser dev mode — credentials must come from <code>.env</code>. Run the
-            desktop app to manage them here.
+            Running in browser dev mode — credential management is only available in the desktop
+            app.
           </div>
         )}
       </DialogContent>
