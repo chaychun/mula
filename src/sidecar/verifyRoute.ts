@@ -36,13 +36,15 @@ async function verifyApiKey(apiKey: string): Promise<VerifyResult> {
 }
 
 /**
- * Verify an OAuth token by hitting Anthropic directly with Bearer auth on the
- * free /v1/messages/count_tokens endpoint. Bypasses the local `claude` CLI so
- * the user's keychain-stored CLI credentials can't mask a bad token.
+ * Verify an OAuth token by sending the minimum-cost message that Anthropic
+ * will accept under the oauth-2025-04-20 beta: max_tokens=1, plus the required
+ * "You are Claude Code" system prompt (Anthropic rejects OAuth requests
+ * missing it). Bypasses the local `claude` CLI so keychain-stored CLI
+ * credentials can't mask a bad token.
  */
 async function verifyOAuthToken(token: string): Promise<VerifyResult> {
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages/count_tokens", {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -51,7 +53,9 @@ async function verifyOAuthToken(token: string): Promise<VerifyResult> {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
+        model: "claude-haiku-4-5",
+        max_tokens: 1,
+        system: "You are Claude Code, Anthropic's official CLI for Claude.",
         messages: [{ role: "user", content: "." }],
       }),
     });

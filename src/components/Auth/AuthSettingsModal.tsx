@@ -18,7 +18,7 @@ import {
   Trash,
   WarningCircle,
 } from "@phosphor-icons/react";
-import type { CredentialKind } from "@/hooks/useCredentialStatus";
+import type { StoredCredentialKind } from "@/hooks/useCredentialStatus";
 import { useCredentialStatus } from "@/hooks/useCredentialStatus";
 import { cn } from "@/lib/utils";
 
@@ -47,21 +47,30 @@ export default function AuthSettingsModal({ isOpen, onClose }: AuthSettingsModal
   const [tab, setTab] = useState<Tab>("oauth");
   const [oauthValue, setOauthValue] = useState("");
   const [apiKeyValue, setApiKeyValue] = useState("");
-  const [saving, setSaving] = useState<CredentialKind | null>(null);
+  const [saving, setSaving] = useState<StoredCredentialKind | null>(null);
   const [error, setError] = useState<string | null>(null);
   const wasOpen = useRef(false);
 
   // Reset transient state only on the close → open transition, not on every
-  // status refresh while the modal is open.
+  // status refresh while the modal is open. Default to whichever tab matches
+  // the active override so the Clear button is one click away.
   useEffect(() => {
     if (isOpen && !wasOpen.current) {
       setOauthValue("");
       setApiKeyValue("");
       setError(null);
-      setTab(status.has_api_key_stored && !status.has_oauth_stored ? "api_key" : "oauth");
+      const initialTab: Tab =
+        status.active_kind === "api_key"
+          ? "api_key"
+          : status.active_kind === "oauth"
+            ? "oauth"
+            : status.has_api_key_stored && !status.has_oauth_stored
+              ? "api_key"
+              : "oauth";
+      setTab(initialTab);
     }
     wasOpen.current = isOpen;
-  }, [isOpen, status.has_api_key_stored, status.has_oauth_stored]);
+  }, [isOpen, status.active_kind, status.has_api_key_stored, status.has_oauth_stored]);
 
   const activeLabel = useMemo(() => {
     if (!status.active_kind) return "Not configured";
@@ -80,9 +89,9 @@ export default function AuthSettingsModal({ isOpen, onClose }: AuthSettingsModal
     return `${kind} (${source})`;
   }, [status]);
 
-  const hasOverride = status.has_oauth_stored || status.has_api_key_stored;
+  const hasOverride = status.active_kind !== null && status.active_kind !== "local_cli";
 
-  async function handleSave(kind: CredentialKind) {
+  async function handleSave(kind: StoredCredentialKind) {
     const value = kind === "oauth" ? oauthValue : apiKeyValue;
     const trimmed = value.trim();
     if (!trimmed) return;
@@ -112,7 +121,7 @@ export default function AuthSettingsModal({ isOpen, onClose }: AuthSettingsModal
     }
   }
 
-  async function handleClear(kind: CredentialKind) {
+  async function handleClear(kind: StoredCredentialKind) {
     setError(null);
     setSaving(kind);
     try {

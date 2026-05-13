@@ -172,10 +172,21 @@ fn local_cli_has_credentials() -> bool {
             .stderr(std::process::Stdio::null())
             .status();
         if let Ok(s) = status {
-            return s.success();
+            if s.success() {
+                return true;
+            }
+        }
+        // Some installs store creds as a file instead of in Keychain
+        if let Some(home) = std::env::var_os("HOME") {
+            if std::path::PathBuf::from(home)
+                .join(".claude/.credentials.json")
+                .exists()
+            {
+                return true;
+            }
         }
     }
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "linux")]
     {
         if let Some(home) = std::env::var_os("HOME") {
             let home = std::path::PathBuf::from(home);
@@ -186,6 +197,17 @@ fn local_cli_has_credentials() -> bool {
                 if candidate.exists() {
                     return true;
                 }
+            }
+        }
+    }
+    #[cfg(target_os = "windows")]
+    {
+        if let Some(appdata) = std::env::var_os("APPDATA") {
+            if std::path::PathBuf::from(appdata)
+                .join("claude/.credentials.json")
+                .exists()
+            {
+                return true;
             }
         }
     }

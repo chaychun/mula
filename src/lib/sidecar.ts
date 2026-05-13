@@ -65,6 +65,7 @@ export async function reinitSidecar(): Promise<void> {
     }
     await new Promise((r) => setTimeout(r, 100));
   }
+  throw new Error(`Sidecar did not respond on port ${info.port} after restart`);
 }
 
 /**
