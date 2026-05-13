@@ -1,18 +1,33 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import AppSidebar from "@/components/Sidebar/AppSidebar";
 import CreateProjectModal from "@/components/Sidebar/CreateProjectModal";
+import AuthSettingsModal from "@/components/Auth/AuthSettingsModal";
 import { SidebarInset } from "@/components/ui/sidebar";
 import { useProjects } from "@/hooks/useProjects";
 import { useSessions } from "@/hooks/useSessions";
+import { useCredentialStatus } from "@/hooks/useCredentialStatus";
 import { Button } from "@/components/ui/button";
-import { GraduationCap, Plus } from "@phosphor-icons/react";
+import { GraduationCap, Plus, ShieldCheck, WarningCircle } from "@phosphor-icons/react";
 
 export default function Home() {
   const navigate = useNavigate();
   const { projects, loading: projectsLoading, createProject, updateProject } = useProjects();
   const { sessions, createSession, fetchSessions, updateSession } = useSessions(null);
+  const { status: credStatus, loading: credLoading, tauriAvailable } = useCredentialStatus();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const hasAutoOpenedAuth = useRef(false);
+  const credConfigured = credStatus.active_kind !== null;
+
+  // First-launch: auto-open auth modal once if no credentials. Never re-fires
+  // after the user dismisses it.
+  useEffect(() => {
+    if (!credLoading && tauriAvailable && !credConfigured && !hasAutoOpenedAuth.current) {
+      hasAutoOpenedAuth.current = true;
+      setIsAuthOpen(true);
+    }
+  }, [credLoading, tauriAvailable, credConfigured]);
 
   const handleSelectProject = useCallback(
     (projectId: string) => {
@@ -94,7 +109,11 @@ export default function Home() {
           </div>
 
           <div className="flex flex-col items-center gap-3">
-            <Button size="lg" onClick={() => setIsModalOpen(true)}>
+            <Button
+              size="lg"
+              onClick={() => setIsModalOpen(true)}
+              disabled={!credConfigured && tauriAvailable}
+            >
               <Plus size={18} weight="bold" />
               Start a project
             </Button>
@@ -102,6 +121,33 @@ export default function Home() {
               or use the sidebar to pick an existing one
             </p>
           </div>
+
+          {!credLoading && (
+            <button
+              type="button"
+              onClick={() => setIsAuthOpen(true)}
+              className={`flex items-center gap-2 border px-3 py-2 text-xs transition-colors ${
+                credConfigured
+                  ? "border-border text-muted-foreground hover:bg-muted/50"
+                  : "border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/15"
+              }`}
+            >
+              {credConfigured ? (
+                <>
+                  <ShieldCheck size={14} weight="duotone" />
+                  Connected via{" "}
+                  {credStatus.active_kind === "local_cli"
+                    ? "local Claude Code"
+                    : "Anthropic API key"}
+                </>
+              ) : (
+                <>
+                  <WarningCircle size={14} weight="fill" />
+                  No Anthropic credentials — click to sign in
+                </>
+              )}
+            </button>
+          )}
         </div>
       </SidebarInset>
 
@@ -113,6 +159,8 @@ export default function Home() {
           setIsModalOpen(false);
         }}
       />
+
+      <AuthSettingsModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
     </>
   );
 }

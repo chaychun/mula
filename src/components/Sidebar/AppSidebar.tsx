@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { GraduationCap, Plus } from "@phosphor-icons/react";
+import { GraduationCap, Plus, ShieldCheck, WarningCircle } from "@phosphor-icons/react";
 import type { Project, Session } from "@/lib/types";
 import {
   Sidebar,
@@ -16,6 +16,9 @@ import {
   SidebarMenuSkeleton,
 } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { Button } from "@/components/ui/button";
+import AuthSettingsModal from "@/components/Auth/AuthSettingsModal";
+import { useCredentialStatus } from "@/hooks/useCredentialStatus";
 import CreateProjectModal from "./CreateProjectModal";
 import ProjectMenu from "./ProjectMenu";
 
@@ -47,6 +50,9 @@ export default function AppSidebar({
   onRenameSession,
 }: AppSidebarProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const { status: credStatus } = useCredentialStatus();
+  const credConfigured = credStatus.active_kind !== null;
 
   const handleCreateProject = (name: string) => {
     onCreateProject(name);
@@ -102,7 +108,24 @@ export default function AppSidebar({
       </SidebarContent>
 
       {/* Footer */}
-      <SidebarFooter className="border-t border-sidebar-border">
+      <SidebarFooter className="border-t border-sidebar-border !flex-row items-center justify-between gap-1 px-2">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={() => setIsAuthOpen(true)}
+          title={credConfigured ? "Anthropic authentication" : "Set up Anthropic authentication"}
+          className="relative"
+        >
+          {credConfigured ? (
+            <ShieldCheck size={16} weight="duotone" />
+          ) : (
+            <WarningCircle size={16} weight="fill" className="text-destructive" />
+          )}
+          <span className="sr-only">Authentication</span>
+          {!credConfigured && (
+            <span className="absolute top-1 right-1 size-1.5 rounded-full bg-destructive" />
+          )}
+        </Button>
         <ThemeToggle />
       </SidebarFooter>
 
@@ -111,6 +134,8 @@ export default function AppSidebar({
         onClose={() => setIsModalOpen(false)}
         onCreate={handleCreateProject}
       />
+
+      <AuthSettingsModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
     </Sidebar>
   );
 }
