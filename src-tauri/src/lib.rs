@@ -2,13 +2,18 @@ use rand::Rng;
 use serde::Serialize;
 use std::sync::Mutex;
 use tauri::{AppHandle, Manager, State};
+use tauri_plugin_shell::process::CommandChild;
 use tauri_plugin_shell::ShellExt;
+
+const OAUTH_FILE: &str = ".oauth_token";
+const API_KEY_FILE: &str = ".api_key";
 
 // Sidecar state shared across commands
 struct SidecarState {
     port: u16,
     auth_token: String,
     running: bool,
+    child: Option<CommandChild>,
 }
 
 struct AppState {
@@ -25,6 +30,18 @@ struct SidecarInfo {
 struct SidecarStatus {
     running: bool,
     port: u16,
+}
+
+#[derive(Serialize)]
+struct CredentialStatus {
+    /// "oauth" | "api_key" | null — which credential the sidecar is actually using
+    active_kind: Option<String>,
+    /// "stored" | "env" | null — where the active credential came from
+    active_source: Option<String>,
+    has_oauth_stored: bool,
+    has_api_key_stored: bool,
+    has_oauth_env: bool,
+    has_api_key_env: bool,
 }
 
 // Generate a random auth token
@@ -47,6 +64,53 @@ fn find_available_port() -> u16 {
     portpicker::pick_unused_port().unwrap_or(3456)
 }
 
+fn credential_path(app: &AppHandle, file: &str) -> Result<std::path::PathBuf, String> {
+    let data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to get app data dir: {}", e))?;
+    std::fs::create_dir_all(&data_dir).map_err(|e| format!("Failed to create dir: {}", e))?;
+    Ok(data_dir.join(file))
+}
+
+fn write_credential(app: &AppHandle, file: &str, value: &str) -> Result<(), String> {
+    let path = credential_path(app, file)?;
+    std::fs::write(&path, value).map_err(|e| format!("Failed to write credential: {}", e))?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let perms = std::fs::Permissions::from_mode(0o600);
+        std::fs::set_permissions(&path, perms)
+            .map_err(|e| format!("Failed to set permissions: {}", e))?;
+    }
+    Ok(())
+}
+
+fn read_credential(app: &AppHandle, file: &str) -> Option<String> {
+    let path = app.path().app_data_dir().ok()?.join(file);
+    std::fs::read_to_string(path).ok().and_then(|s| {
+        let t = s.trim().to_string();
+        if t.is_empty() {
+            None
+        } else {
+            Some(t)
+        }
+    })
+}
+
+fn delete_credential(app: &AppHandle, file: &str) -> Result<(), String> {
+    let path = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?
+        .join(file);
+    if path.exists() {
+        std::fs::remove_file(&path).map_err(|e| format!("Failed to delete credential: {}", e))?;
+    }
+    Ok(())
+}
+
 #[tauri::command]
 fn get_sidecar_info(state: State<AppState>) -> Result<SidecarInfo, String> {
     let sidecar = state.sidecar.lock().map_err(|e| e.to_string())?;
@@ -65,47 +129,85 @@ fn get_sidecar_status(state: State<AppState>) -> Result<SidecarStatus, String> {
     })
 }
 
+/// Store a credential. `kind` must be "oauth" or "api_key".
 #[tauri::command]
-fn store_api_key(app: AppHandle, key: String) -> Result<(), String> {
-    // Store API key in the app's config dir as a simple file for now.
-    // In production, Stronghold would be used, but that requires additional
-    // setup (password, salt). For the initial implementation, we use the
-    // app data directory which is already platform-specific and user-private.
-    let data_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| format!("Failed to get app data dir: {}", e))?;
-    std::fs::create_dir_all(&data_dir).map_err(|e| format!("Failed to create dir: {}", e))?;
-
-    let key_path = data_dir.join(".api_key");
-    std::fs::write(&key_path, &key).map_err(|e| format!("Failed to write API key: {}", e))?;
-
-    // Set restrictive permissions on Unix
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let perms = std::fs::Permissions::from_mode(0o600);
-        std::fs::set_permissions(&key_path, perms)
-            .map_err(|e| format!("Failed to set permissions: {}", e))?;
+fn store_credential(app: AppHandle, kind: String, value: String) -> Result<(), String> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return Err("Credential value is empty".into());
     }
+    let file = match kind.as_str() {
+        "oauth" => OAUTH_FILE,
+        "api_key" => API_KEY_FILE,
+        _ => return Err(format!("Unknown credential kind: {}", kind)),
+    };
+    write_credential(&app, file, trimmed)
+}
 
-    Ok(())
+/// Clear a stored credential. `kind` must be "oauth" or "api_key".
+#[tauri::command]
+fn clear_credential(app: AppHandle, kind: String) -> Result<(), String> {
+    let file = match kind.as_str() {
+        "oauth" => OAUTH_FILE,
+        "api_key" => API_KEY_FILE,
+        _ => return Err(format!("Unknown credential kind: {}", kind)),
+    };
+    delete_credential(&app, file)
 }
 
 #[tauri::command]
-fn has_api_key(app: AppHandle) -> Result<bool, String> {
-    let data_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| format!("Failed to get app data dir: {}", e))?;
-    let key_path = data_dir.join(".api_key");
-    Ok(key_path.exists())
+fn get_credential_status(app: AppHandle) -> Result<CredentialStatus, String> {
+    let has_oauth_stored = read_credential(&app, OAUTH_FILE).is_some();
+    let has_api_key_stored = read_credential(&app, API_KEY_FILE).is_some();
+    let has_oauth_env = std::env::var("CLAUDE_CODE_OAUTH_TOKEN")
+        .map(|v| !v.trim().is_empty())
+        .unwrap_or(false);
+    let has_api_key_env = std::env::var("ANTHROPIC_API_KEY")
+        .map(|v| !v.trim().is_empty())
+        .unwrap_or(false);
+
+    // Precedence: stored OAuth → env OAuth → stored API key → env API key
+    let (active_kind, active_source) = if has_oauth_stored {
+        (Some("oauth".into()), Some("stored".into()))
+    } else if has_oauth_env {
+        (Some("oauth".into()), Some("env".into()))
+    } else if has_api_key_stored {
+        (Some("api_key".into()), Some("stored".into()))
+    } else if has_api_key_env {
+        (Some("api_key".into()), Some("env".into()))
+    } else {
+        (None, None)
+    };
+
+    Ok(CredentialStatus {
+        active_kind,
+        active_source,
+        has_oauth_stored,
+        has_api_key_stored,
+        has_oauth_env,
+        has_api_key_env,
+    })
 }
 
-fn read_api_key(app: &AppHandle) -> Option<String> {
-    let data_dir = app.path().app_data_dir().ok()?;
-    let key_path = data_dir.join(".api_key");
-    std::fs::read_to_string(key_path).ok()
+/// Kill the running sidecar (if any) and spawn a fresh one with current credentials.
+#[tauri::command]
+fn restart_sidecar(app: AppHandle, state: State<AppState>) -> Result<(), String> {
+    let had_child = {
+        let mut sidecar = state.sidecar.lock().map_err(|e| e.to_string())?;
+        sidecar.running = false;
+        if let Some(child) = sidecar.child.take() {
+            let _ = child.kill();
+            true
+        } else {
+            false
+        }
+    };
+    // CommandChild::kill() is non-blocking. Give the OS a brief moment to release
+    // the port and the SQLite file lock before the new sidecar opens them.
+    if had_child {
+        std::thread::sleep(std::time::Duration::from_millis(250));
+    }
+    spawn_sidecar(&app, &state)
 }
 
 /// Locate the `claude` CLI binary for the Agent SDK.
@@ -138,11 +240,33 @@ fn find_claude_path() -> String {
     String::new()
 }
 
+/// Resolve the active credential to inject into the sidecar.
+/// Returns (oauth_token, api_key) — only one non-empty.
+/// Precedence: stored OAuth → env OAuth → stored API key → env API key.
+fn resolve_credentials(app: &AppHandle) -> (String, String) {
+    if let Some(token) = read_credential(app, OAUTH_FILE) {
+        return (token, String::new());
+    }
+    if let Ok(token) = std::env::var("CLAUDE_CODE_OAUTH_TOKEN") {
+        if !token.trim().is_empty() {
+            return (token, String::new());
+        }
+    }
+    if let Some(key) = read_credential(app, API_KEY_FILE) {
+        return (String::new(), key);
+    }
+    if let Ok(key) = std::env::var("ANTHROPIC_API_KEY") {
+        if !key.trim().is_empty() {
+            return (String::new(), key);
+        }
+    }
+    (String::new(), String::new())
+}
+
 fn spawn_sidecar(app: &AppHandle, state: &AppState) -> Result<(), String> {
     let port = find_available_port();
     let auth_token = generate_auth_token();
 
-    // Get database path
     let data_dir = app
         .path()
         .app_data_dir()
@@ -150,14 +274,9 @@ fn spawn_sidecar(app: &AppHandle, state: &AppState) -> Result<(), String> {
     std::fs::create_dir_all(&data_dir).map_err(|e| format!("Failed to create dir: {}", e))?;
     let db_path = data_dir.join("data.db");
 
-    // Read API key: stored file first, then environment variables as fallback
-    let api_key = read_api_key(app).unwrap_or_default();
-    let oauth_token = std::env::var("CLAUDE_CODE_OAUTH_TOKEN").unwrap_or_default();
-
-    // Find the claude CLI path for the Agent SDK
+    let (oauth_token, api_key) = resolve_credentials(app);
     let claude_path = find_claude_path();
 
-    // Spawn sidecar using Tauri shell plugin
     let shell = app.shell();
     let sidecar_command = shell
         .sidecar("coding-tutor-sidecar")
@@ -169,24 +288,32 @@ fn spawn_sidecar(app: &AppHandle, state: &AppState) -> Result<(), String> {
         .env("CLAUDE_CODE_OAUTH_TOKEN", oauth_token)
         .env("CLAUDE_PATH", claude_path);
 
-    let (_rx, _child) = sidecar_command
-        .spawn()
-        .map_err(|e| format!("Failed to spawn sidecar: {}", e))?;
+    let (_rx, child) = match sidecar_command.spawn() {
+        Ok(pair) => pair,
+        Err(e) => {
+            // Ensure state reflects the failure so a subsequent restart_sidecar
+            // doesn't think a previous child is still alive.
+            if let Ok(mut sidecar) = state.sidecar.lock() {
+                sidecar.running = false;
+                sidecar.child = None;
+            }
+            return Err(format!("Failed to spawn sidecar: {}", e));
+        }
+    };
 
-    // Update state
     let mut sidecar = state.sidecar.lock().map_err(|e| e.to_string())?;
     sidecar.port = port;
     sidecar.auth_token = auth_token;
     sidecar.running = true;
+    sidecar.child = Some(child);
 
     log::info!("Sidecar spawned on port {}", port);
-
     Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Load .env file so CLAUDE_CODE_OAUTH_TOKEN and other vars are available
+    // Load .env so CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_API_KEY are available as fallback
     dotenvy::dotenv().ok();
 
     let app_state = AppState {
@@ -194,6 +321,7 @@ pub fn run() {
             port: 0,
             auth_token: String::new(),
             running: false,
+            child: None,
         }),
     };
 
@@ -203,8 +331,10 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_sidecar_info,
             get_sidecar_status,
-            store_api_key,
-            has_api_key,
+            get_credential_status,
+            store_credential,
+            clear_credential,
+            restart_sidecar,
         ])
         .setup(|app| {
             if cfg!(debug_assertions) {
@@ -215,12 +345,10 @@ pub fn run() {
                 )?;
             }
 
-            // Spawn sidecar on startup
             let handle = app.handle().clone();
             let state = handle.state::<AppState>();
             if let Err(e) = spawn_sidecar(&handle, &state) {
                 log::error!("Failed to spawn sidecar: {}", e);
-                // Don't fail app startup — the frontend will show an error state
             }
 
             Ok(())

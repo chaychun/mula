@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import { CredentialProvider } from "@/hooks/useCredentialStatus";
 import { initSidecar } from "@/lib/sidecar";
 import Home from "@/pages/Home";
 import SessionPage from "@/pages/SessionPage";
@@ -20,19 +21,21 @@ initSidecar().then(() => {
   createRoot(document.getElementById("root")!).render(
     <StrictMode>
       <ThemeProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <SidebarProvider>
-                  <Home />
-                </SidebarProvider>
-              }
-            />
-            <Route path="/projects/:projectId/sessions/:sessionId" element={<SessionPage />} />
-          </Routes>
-        </BrowserRouter>
+        <CredentialProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route
+                path="/"
+                element={
+                  <SidebarProvider>
+                    <Home />
+                  </SidebarProvider>
+                }
+              />
+              <Route path="/projects/:projectId/sessions/:sessionId" element={<SessionPage />} />
+            </Routes>
+          </BrowserRouter>
+        </CredentialProvider>
       </ThemeProvider>
     </StrictMode>
   );
