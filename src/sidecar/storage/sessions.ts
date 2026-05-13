@@ -1,7 +1,7 @@
 import type { Session } from "../../lib/types";
 import { getDb } from "../database";
 import { generateId, nowIso, parseJsonArray } from "./utils";
-import { listMessages } from "./messages";
+import { listMessages, replaceMessages } from "./messages";
 import { listExercises } from "./exercises";
 import { listConceptQuestions } from "./conceptQuestions";
 
@@ -118,6 +118,10 @@ export async function updateSession(
     .run(...values);
 
   if (result.changes === 0) return null;
+
+  if (updates.messages !== undefined) {
+    replaceMessages(sessionId, updates.messages);
+  }
 
   return getSession(projectId, sessionId);
 }

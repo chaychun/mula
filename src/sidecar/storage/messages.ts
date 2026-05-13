@@ -45,3 +45,30 @@ export function listMessages(sessionId: string): Message[] {
     .all(sessionId) as MessageRow[];
   return rows.map(rowToMessage);
 }
+
+export function replaceMessages(sessionId: string, messages: Message[]): void {
+  const db = getDb();
+  const replace = db.transaction(() => {
+    db.prepare("DELETE FROM messages WHERE session_id = ?").run(sessionId);
+    const insert = db.prepare(
+      `INSERT INTO messages
+         (id, session_id, role, content, content_blocks, exercise_submission, concept_question_answer, timestamp, sort_order)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    );
+    for (let i = 0; i < messages.length; i++) {
+      const m = messages[i];
+      insert.run(
+        m.id,
+        sessionId,
+        m.role,
+        m.content,
+        m.contentBlocks ? JSON.stringify(m.contentBlocks) : null,
+        m.exerciseSubmission ? JSON.stringify(m.exerciseSubmission) : null,
+        m.conceptQuestionAnswer ? JSON.stringify(m.conceptQuestionAnswer) : null,
+        m.timestamp,
+        i
+      );
+    }
+  });
+  replace();
+}
