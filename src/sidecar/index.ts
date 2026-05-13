@@ -3,6 +3,7 @@ import cors from "cors";
 import { initDatabase, closeDatabase } from "./database";
 import { router } from "./routes";
 import { handleChat } from "./chatRoute";
+import { handleVerify } from "./verifyRoute";
 
 // Read configuration from environment (injected by Rust shell)
 const PREFERRED_PORT = parseInt(process.env.PORT || "3001", 10);
@@ -55,6 +56,9 @@ app.use(router);
 
 // Chat endpoint (SSE streaming)
 app.post("/api/chat", handleChat);
+
+// Credential verification — runs a tiny Agent SDK call to confirm auth works
+app.post("/api/verify-credential", handleVerify);
 
 // Start server — try preferred port, then auto-increment if taken
 function startServer(port: number, maxAttempts = 10): void {

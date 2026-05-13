@@ -108,7 +108,7 @@ export default function AppSidebar({
       </SidebarContent>
 
       {/* Footer */}
-      <SidebarFooter className="border-t border-sidebar-border flex items-center justify-between gap-1 px-2">
+      <SidebarFooter className="border-t border-sidebar-border !flex-row items-center justify-between gap-1 px-2">
         <Button
           variant="ghost"
           size="icon-sm"

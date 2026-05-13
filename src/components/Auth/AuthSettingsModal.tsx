@@ -65,10 +65,22 @@ export default function AuthSettingsModal({ isOpen, onClose }: AuthSettingsModal
 
   const activeLabel = useMemo(() => {
     if (!status.active_kind) return "Not configured";
-    const kind = status.active_kind === "oauth" ? "Claude subscription" : "API key";
-    const source = status.active_source === "stored" ? "stored in app" : "from .env";
+    const kind =
+      status.active_kind === "local_cli"
+        ? "Local Claude Code"
+        : status.active_kind === "oauth"
+          ? "Claude subscription"
+          : "API key";
+    const source =
+      status.active_source === "stored"
+        ? "stored in app"
+        : status.active_source === "keychain"
+          ? "via system keychain"
+          : "from .env";
     return `${kind} (${source})`;
   }, [status]);
+
+  const hasOverride = status.has_oauth_stored || status.has_api_key_stored;
 
   async function handleSave(kind: CredentialKind) {
     const value = kind === "oauth" ? oauthValue : apiKeyValue;
@@ -92,6 +104,7 @@ export default function AuthSettingsModal({ isOpen, onClose }: AuthSettingsModal
       await store(kind, trimmed);
       if (kind === "oauth") setOauthValue("");
       else setApiKeyValue("");
+      onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -120,7 +133,7 @@ export default function AuthSettingsModal({ isOpen, onClose }: AuthSettingsModal
             Anthropic authentication
           </DialogTitle>
           <DialogDescription>
-            Pick how the tutor talks to Claude. Subscription is the primary path.
+            Auto-detects your local Claude Code install. Override below if needed.
           </DialogDescription>
         </DialogHeader>
 
@@ -135,6 +148,52 @@ export default function AuthSettingsModal({ isOpen, onClose }: AuthSettingsModal
             )}
             {loading ? "Loading…" : activeLabel}
           </span>
+        </div>
+
+        {/* Local CLI detection card */}
+        {status.local_cli_installed && (
+          <div
+            className={`flex items-start gap-3 border px-3 py-3 ${
+              status.active_kind === "local_cli"
+                ? "border-primary/40 bg-primary/5"
+                : "border-border bg-muted/30"
+            }`}
+          >
+            <Sparkle
+              size={18}
+              weight="fill"
+              className={
+                status.active_kind === "local_cli" ? "text-primary" : "text-muted-foreground"
+              }
+            />
+            <div className="flex-1 space-y-1">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                Local Claude Code installation
+                {status.local_cli_authenticated ? (
+                  <span className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-primary">
+                    <Check size={10} weight="bold" /> Authenticated
+                  </span>
+                ) : (
+                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Not signed in
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {status.active_kind === "local_cli"
+                  ? "Using your Claude Code login via the system keychain. Nothing to paste."
+                  : status.local_cli_authenticated
+                    ? hasOverride
+                      ? "Available as a fallback. Clear the override below to use it."
+                      : "Detected but inactive."
+                    : "Sign in once with `claude login`, then this becomes the default."}
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide pt-1">
+          Manual override
         </div>
 
         {/* Tabs */}
@@ -161,8 +220,7 @@ export default function AuthSettingsModal({ isOpen, onClose }: AuthSettingsModal
         {tab === "oauth" && (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Uses your Claude Pro, Max, Team, or Enterprise plan. Token is generated locally by the
-              Claude Code CLI — Anthropic never sees the app.
+              Uses your Claude Pro, Max, Team, or Enterprise plan.
             </p>
             <ol className="space-y-2 text-sm">
               <li className="flex gap-2">
@@ -229,7 +287,7 @@ export default function AuthSettingsModal({ isOpen, onClose }: AuthSettingsModal
                   onClick={() => handleSave("oauth")}
                   disabled={!oauthValue.trim() || saving !== null || !tauriAvailable}
                 >
-                  {saving === "oauth" ? "Saving…" : "Save token"}
+                  {saving === "oauth" ? "Verifying…" : "Save & verify"}
                 </Button>
               </div>
             </div>
@@ -297,7 +355,7 @@ export default function AuthSettingsModal({ isOpen, onClose }: AuthSettingsModal
                   onClick={() => handleSave("api_key")}
                   disabled={!apiKeyValue.trim() || saving !== null || !tauriAvailable}
                 >
-                  {saving === "api_key" ? "Saving…" : "Save key"}
+                  {saving === "api_key" ? "Verifying…" : "Save & verify"}
                 </Button>
               </div>
             </div>

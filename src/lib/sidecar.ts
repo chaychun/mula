@@ -41,6 +41,33 @@ export async function initSidecar(): Promise<void> {
 }
 
 /**
+ * Re-fetch sidecar connection info after a restart. The Rust core generates a
+ * fresh port + auth token on every spawn, so cached values are stale.
+ * Waits until the new sidecar responds to /health (up to ~3s) before returning.
+ */
+export async function reinitSidecar(): Promise<void> {
+  if (!window.__TAURI_INTERNALS__) return;
+
+  const { invoke } = await import("@tauri-apps/api/core");
+  const info = await invoke<{ port: number; auth_token: string }>("get_sidecar_info");
+  sidecarPort = info.port;
+  authToken = info.auth_token;
+
+  // Poll /health — Express may not be bound yet immediately after spawn
+  for (let i = 0; i < 30; i++) {
+    try {
+      const res = await fetch(`http://127.0.0.1:${info.port}/health`, {
+        signal: AbortSignal.timeout(200),
+      });
+      if (res.ok) return;
+    } catch {
+      // Not ready yet
+    }
+    await new Promise((r) => setTimeout(r, 100));
+  }
+}
+
+/**
  * Get the base URL for sidecar API requests.
  */
 export function getSidecarBaseUrl(): string {

@@ -136,7 +136,11 @@ export default function Home() {
                 <>
                   <ShieldCheck size={14} weight="duotone" />
                   Connected via{" "}
-                  {credStatus.active_kind === "oauth" ? "Claude subscription" : "Anthropic API key"}
+                  {credStatus.active_kind === "local_cli"
+                    ? "local Claude Code"
+                    : credStatus.active_kind === "oauth"
+                      ? "Claude subscription"
+                      : "Anthropic API key"}
                 </>
               ) : (
                 <>

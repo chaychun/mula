@@ -8,9 +8,11 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { reinitSidecar, sidecarFetch } from "@/lib/sidecar";
 
-export type CredentialKind = "oauth" | "api_key";
-export type CredentialSource = "stored" | "env";
+export type CredentialKind = "local_cli" | "oauth" | "api_key";
+export type StoredCredentialKind = "oauth" | "api_key";
+export type CredentialSource = "stored" | "env" | "keychain";
 
 export interface CredentialStatus {
   active_kind: CredentialKind | null;
@@ -19,6 +21,8 @@ export interface CredentialStatus {
   has_api_key_stored: boolean;
   has_oauth_env: boolean;
   has_api_key_env: boolean;
+  local_cli_installed: boolean;
+  local_cli_authenticated: boolean;
 }
 
 interface CredentialContextValue {
@@ -26,8 +30,11 @@ interface CredentialContextValue {
   loading: boolean;
   tauriAvailable: boolean;
   refresh: () => Promise<void>;
-  store: (kind: CredentialKind, value: string) => Promise<void>;
-  clear: (kind: CredentialKind) => Promise<void>;
+  /** Stores, restarts the sidecar, then verifies. Throws if verification fails. */
+  store: (kind: StoredCredentialKind, value: string) => Promise<void>;
+  clear: (kind: StoredCredentialKind) => Promise<void>;
+  /** Run a verification round-trip without changing creds. */
+  verify: () => Promise<{ ok: boolean; error?: string }>;
 }
 
 const EMPTY: CredentialStatus = {
@@ -37,6 +44,8 @@ const EMPTY: CredentialStatus = {
   has_api_key_stored: false,
   has_oauth_env: false,
   has_api_key_env: false,
+  local_cli_installed: false,
+  local_cli_authenticated: false,
 };
 
 const CredentialContext = createContext<CredentialContextValue | null>(null);
@@ -74,27 +83,43 @@ export function CredentialProvider({ children }: { children: ReactNode }) {
     refresh();
   }, [refresh]);
 
+  const verify = useCallback(async (): Promise<{ ok: boolean; error?: string }> => {
+    try {
+      const res = await sidecarFetch("/api/verify-credential", { method: "POST" });
+      if (!res.ok) return { ok: false, error: `Sidecar responded ${res.status}` };
+      return (await res.json()) as { ok: boolean; error?: string };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  }, []);
+
   const store = useCallback(
-    async (kind: CredentialKind, value: string) => {
+    async (kind: StoredCredentialKind, value: string) => {
       await invokeTauri<void>("store_credential", { kind, value });
       await invokeTauri<void>("restart_sidecar");
+      await reinitSidecar();
+      const result = await verify();
       await refresh();
+      if (!result.ok) {
+        throw new Error(result.error || "Credential verification failed");
+      }
     },
-    [refresh]
+    [refresh, verify]
   );
 
   const clear = useCallback(
-    async (kind: CredentialKind) => {
+    async (kind: StoredCredentialKind) => {
       await invokeTauri<void>("clear_credential", { kind });
       await invokeTauri<void>("restart_sidecar");
+      await reinitSidecar();
       await refresh();
     },
     [refresh]
   );
 
   const value = useMemo(
-    () => ({ status, loading, tauriAvailable, refresh, store, clear }),
-    [status, loading, tauriAvailable, refresh, store, clear]
+    () => ({ status, loading, tauriAvailable, refresh, store, clear, verify }),
+    [status, loading, tauriAvailable, refresh, store, clear, verify]
   );
 
   return createElement(CredentialContext.Provider, { value }, children);

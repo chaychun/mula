@@ -34,14 +34,18 @@ struct SidecarStatus {
 
 #[derive(Serialize)]
 struct CredentialStatus {
-    /// "oauth" | "api_key" | null — which credential the sidecar is actually using
+    /// "local_cli" | "oauth" | "api_key" | null
     active_kind: Option<String>,
-    /// "stored" | "env" | null — where the active credential came from
+    /// "stored" | "env" | "keychain" | null
     active_source: Option<String>,
     has_oauth_stored: bool,
     has_api_key_stored: bool,
     has_oauth_env: bool,
     has_api_key_env: bool,
+    /// `claude` CLI binary is present on the system.
+    local_cli_installed: bool,
+    /// `claude` CLI has stored credentials (keychain on macOS, config file elsewhere).
+    local_cli_authenticated: bool,
 }
 
 // Generate a random auth token
@@ -155,6 +159,39 @@ fn clear_credential(app: AppHandle, kind: String) -> Result<(), String> {
     delete_credential(&app, file)
 }
 
+/// Check whether the `claude` CLI has stored credentials we'd inherit by
+/// spawning it as a subprocess. On macOS the CLI uses the system Keychain
+/// ("Claude Code-credentials"); on other platforms it falls back to a config
+/// file under the user's config dir.
+fn local_cli_has_credentials() -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        let status = std::process::Command::new("security")
+            .args(["find-generic-password", "-s", "Claude Code-credentials"])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status();
+        if let Ok(s) = status {
+            return s.success();
+        }
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        if let Some(home) = std::env::var_os("HOME") {
+            let home = std::path::PathBuf::from(home);
+            for candidate in [
+                home.join(".claude/.credentials.json"),
+                home.join(".config/claude/.credentials.json"),
+            ] {
+                if candidate.exists() {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
 #[tauri::command]
 fn get_credential_status(app: AppHandle) -> Result<CredentialStatus, String> {
     let has_oauth_stored = read_credential(&app, OAUTH_FILE).is_some();
@@ -165,14 +202,19 @@ fn get_credential_status(app: AppHandle) -> Result<CredentialStatus, String> {
     let has_api_key_env = std::env::var("ANTHROPIC_API_KEY")
         .map(|v| !v.trim().is_empty())
         .unwrap_or(false);
+    let local_cli_installed = !find_claude_path().is_empty();
+    let local_cli_authenticated = local_cli_installed && local_cli_has_credentials();
 
-    // Precedence: stored OAuth → env OAuth → stored API key → env API key
+    // Precedence: manually stored creds win (explicit override), then local CLI
+    // (detected, zero-config), then env vars as a last fallback.
     let (active_kind, active_source) = if has_oauth_stored {
         (Some("oauth".into()), Some("stored".into()))
-    } else if has_oauth_env {
-        (Some("oauth".into()), Some("env".into()))
     } else if has_api_key_stored {
         (Some("api_key".into()), Some("stored".into()))
+    } else if local_cli_authenticated {
+        (Some("local_cli".into()), Some("keychain".into()))
+    } else if has_oauth_env {
+        (Some("oauth".into()), Some("env".into()))
     } else if has_api_key_env {
         (Some("api_key".into()), Some("env".into()))
     } else {
@@ -186,6 +228,8 @@ fn get_credential_status(app: AppHandle) -> Result<CredentialStatus, String> {
         has_api_key_stored,
         has_oauth_env,
         has_api_key_env,
+        local_cli_installed,
+        local_cli_authenticated,
     })
 }
 
@@ -241,19 +285,25 @@ fn find_claude_path() -> String {
 }
 
 /// Resolve the active credential to inject into the sidecar.
-/// Returns (oauth_token, api_key) — only one non-empty.
-/// Precedence: stored OAuth → env OAuth → stored API key → env API key.
+/// Returns (oauth_token, api_key) — only one non-empty, or both empty when
+/// the local Claude Code CLI is authenticated (the sidecar then lets the CLI
+/// subprocess use its own keychain creds).
+///
+/// Precedence matches `get_credential_status`: stored creds > local CLI > env.
 fn resolve_credentials(app: &AppHandle) -> (String, String) {
     if let Some(token) = read_credential(app, OAUTH_FILE) {
         return (token, String::new());
+    }
+    if let Some(key) = read_credential(app, API_KEY_FILE) {
+        return (String::new(), key);
+    }
+    if local_cli_has_credentials() && !find_claude_path().is_empty() {
+        return (String::new(), String::new());
     }
     if let Ok(token) = std::env::var("CLAUDE_CODE_OAUTH_TOKEN") {
         if !token.trim().is_empty() {
             return (token, String::new());
         }
-    }
-    if let Some(key) = read_credential(app, API_KEY_FILE) {
-        return (String::new(), key);
     }
     if let Ok(key) = std::env::var("ANTHROPIC_API_KEY") {
         if !key.trim().is_empty() {
