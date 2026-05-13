@@ -138,9 +138,7 @@ export default function Home() {
                   Connected via{" "}
                   {credStatus.active_kind === "local_cli"
                     ? "local Claude Code"
-                    : credStatus.active_kind === "oauth"
-                      ? "Claude subscription"
-                      : "Anthropic API key"}
+                    : "Anthropic API key"}
                 </>
               ) : (
                 <>

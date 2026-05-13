@@ -10,16 +10,14 @@ import {
 } from "react";
 import { reinitSidecar, sidecarFetch } from "@/lib/sidecar";
 
-export type CredentialKind = "local_cli" | "oauth" | "api_key";
-export type StoredCredentialKind = "oauth" | "api_key";
+export type CredentialKind = "local_cli" | "api_key";
+export type StoredCredentialKind = "api_key";
 export type CredentialSource = "stored" | "env" | "keychain";
 
 export interface CredentialStatus {
   active_kind: CredentialKind | null;
   active_source: CredentialSource | null;
-  has_oauth_stored: boolean;
   has_api_key_stored: boolean;
-  has_oauth_env: boolean;
   has_api_key_env: boolean;
   local_cli_installed: boolean;
   local_cli_authenticated: boolean;
@@ -40,9 +38,7 @@ interface CredentialContextValue {
 const EMPTY: CredentialStatus = {
   active_kind: null,
   active_source: null,
-  has_oauth_stored: false,
   has_api_key_stored: false,
-  has_oauth_env: false,
   has_api_key_env: false,
   local_cli_installed: false,
   local_cli_authenticated: false,
