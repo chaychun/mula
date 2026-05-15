@@ -2,7 +2,7 @@
 
 ## Goal
 
-Migrate the coding tutor from a Next.js web app to a Tauri v2 desktop application with local SQLite storage. The Claude Agent SDK must be preserved for subscription-based billing.
+Migrate Mula (formerly "coding tutor") from a Next.js web app to a Tauri v2 desktop application with local SQLite storage. The Claude Agent SDK must be preserved for subscription-based billing.
 
 ## Architecture
 
@@ -87,9 +87,9 @@ The sidecar is a standalone Bun-compiled binary that runs all backend logic:
 
 SQLite database at Tauri's platform-specific app data directory:
 
-- macOS: `~/Library/Application Support/com.coding-tutor.app/data.db`
-- Windows: `%APPDATA%/com.coding-tutor.app/data.db`
-- Linux: `~/.local/share/com.coding-tutor.app/data.db`
+- macOS: `~/Library/Application Support/com.mula.app/data.db`
+- Windows: `%APPDATA%/com.mula.app/data.db`
+- Linux: `~/.local/share/com.mula.app/data.db`
 
 ### SQLite Schema
 
@@ -190,12 +190,12 @@ CREATE INDEX idx_progress_project_id ON progress(project_id);
 
 ### Migration from Existing JSON Data
 
-On first launch, if JSON data exists at the legacy path (`~/coding-tutor-data`):
+On first launch, if JSON data exists at the legacy path (`~/mula-data`):
 
 1. Read all project directories and session JSON files
 2. Apply the same in-memory migrations the current `getSession()` does (exercises array → record, missing fields, etc.)
 3. Insert into SQLite tables
-4. Rename the old directory to `~/coding-tutor-data.backup`
+4. Rename the old directory to `~/mula-data.backup`
 
 ## Frontend Migration: Next.js to Vite SPA
 
@@ -274,7 +274,7 @@ The one notable fix: `update_exercise` currently fetches the session via HTTP to
 The sidecar is compiled to a standalone binary via `bun build --compile`:
 
 ```bash
-bun build ./src/sidecar/index.ts --compile --outfile coding-tutor-sidecar
+bun build ./src/sidecar/index.ts --compile --outfile mula-sidecar
 ```
 
 This produces a ~90-100MB platform-specific binary that includes the Bun runtime, `better-sqlite3` native addon, and all TypeScript code.

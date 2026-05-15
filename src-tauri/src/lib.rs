@@ -304,7 +304,7 @@ fn spawn_sidecar(app: &AppHandle, state: &AppState) -> Result<(), String> {
 
     let shell = app.shell();
     let sidecar_command = shell
-        .sidecar("coding-tutor-sidecar")
+        .sidecar("mula-sidecar")
         .map_err(|e| format!("Failed to create sidecar command: {}", e))?
         .env("PORT", port.to_string())
         .env("AUTH_TOKEN", auth_token.clone())

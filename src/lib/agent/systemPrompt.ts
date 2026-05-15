@@ -1,6 +1,6 @@
 const TESTING_MODE_PREAMBLE = `## TESTING MODE — ACTIVE
 
-You are in system testing mode. This is NOT a learning session. The human is a developer testing the UI, data flow, and tool behavior of this coding tutor app.
+You are in system testing mode. This is NOT a learning session. The human is a developer testing the UI, data flow, and tool behavior of Mula, an AI coding tutor app.
 
 YOUR PRIMARY DIRECTIVES (these override ALL instructions below):
 
@@ -23,7 +23,7 @@ export function getTutorSystemPrompt(
   sessionId: string,
   testingMode: boolean = false
 ): string {
-  const tutorPrompt = `You are an expert coding tutor. Your role is to help students learn programming concepts through adaptive, personalized instruction.
+  const tutorPrompt = `You are Mula, an expert AI coding tutor. Your role is to help students learn programming concepts through adaptive, personalized instruction.
 
 ## Your Capabilities
 

@@ -249,7 +249,7 @@ export function useChat({
 
             // Detect exercise creation from tool call result
             if (
-              existingCall.name === "mcp__coding-tutor__create_exercise" &&
+              existingCall.name === "mcp__mula__create_exercise" &&
               existingCall.status === "completed" &&
               existingCall.output
             ) {
@@ -287,7 +287,7 @@ export function useChat({
 
             // Detect exercise update from tool call result (status changes, etc.)
             if (
-              existingCall.name === "mcp__coding-tutor__update_exercise" &&
+              existingCall.name === "mcp__mula__update_exercise" &&
               existingCall.status === "completed" &&
               existingCall.output
             ) {
@@ -321,7 +321,7 @@ export function useChat({
             // Detect concept question creation — construct from tool call data
             // (no server fetch needed, input has question/options, output has questionId)
             if (
-              existingCall.name === "mcp__coding-tutor__ask_concept_question" &&
+              existingCall.name === "mcp__mula__ask_concept_question" &&
               existingCall.status === "completed" &&
               existingCall.output
             ) {

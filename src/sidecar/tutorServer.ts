@@ -13,7 +13,7 @@ import { generateId } from "./storage/utils";
 import type { Exercise, ConceptQuestion } from "../lib/types";
 
 export const tutorServer = createSdkMcpServer({
-  name: "coding-tutor",
+  name: "mula",
   version: "1.0.0",
   tools: [
     // 1. read_progress

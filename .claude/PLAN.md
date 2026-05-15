@@ -455,7 +455,7 @@ When parsing streaming response, detect when AI creates exercise via tool call r
 
 ```typescript
 // In stream processing
-if (toolCall.name === "mcp__coding-tutor__create_exercise" && toolCall.output) {
+if (toolCall.name === "mcp__mula__create_exercise" && toolCall.output) {
   const result = JSON.parse(toolCall.output);
   if (result.exerciseId) {
     // Fetch the created exercise from session

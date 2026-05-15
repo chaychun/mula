@@ -1,5 +1,5 @@
 {
-  "name": "coding-tutor",
+  "name": "mula",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -7,10 +7,10 @@
     "dev:sidecar": "bun run src/sidecar/index.ts",
     "dev:all": "bun run dev:sidecar & bun run dev",
     "build": "vite build",
-    "build:sidecar": "bun build src/sidecar/index.ts --compile --outfile src-tauri/binaries/coding-tutor-sidecar-$(rustc -vV | grep host | cut -d' ' -f2)",
+    "build:sidecar": "bun build src/sidecar/index.ts --compile --outfile src-tauri/binaries/mula-sidecar-$(rustc -vV | grep host | cut -d' ' -f2)",
     "preview": "vite preview",
     "tauri": "tauri",
-    "tauri:dev": "pkill -f 'target/debug/coding-tutor' 2>/dev/null; sleep 0.3; bun run build:sidecar && tauri dev",
+    "tauri:dev": "pkill -f 'target/debug/mula' 2>/dev/null; sleep 0.3; bun run build:sidecar && tauri dev",
     "tauri:build": "bun run build:sidecar && tauri build",
     "lint": "oxlint .",
     "format": "oxfmt .",

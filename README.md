@@ -1,4 +1,4 @@
-# Coding Tutor
+# Mula
 
 AI-powered coding tutor desktop app. Built with Tauri + React + the Claude Agent SDK.
 
@@ -26,7 +26,7 @@ This is a personal-use app — clone and run it yourself. Not distributed as a b
 
 ```bash
 git clone <this repo>
-cd coding-tutor
+cd mula
 bun install
 bun run tauri dev
 ```

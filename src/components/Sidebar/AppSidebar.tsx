@@ -68,7 +68,7 @@ export default function AppSidebar({
         {isTauri && <div data-tauri-drag-region className="absolute inset-x-0 top-0 h-10 z-20" />}
         <div data-tauri-drag-region className="flex items-center gap-2 px-2">
           <GraduationCap className="size-5" weight="bold" />
-          <span className="text-sm font-bold">Coding Tutor</span>
+          <span className="text-sm font-bold">Mula</span>
         </div>
       </SidebarHeader>
 

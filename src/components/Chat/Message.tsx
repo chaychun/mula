@@ -14,7 +14,7 @@ import { useStreamBuffer } from "@/hooks/useStreamBuffer";
  */
 function getExerciseIdFromToolCall(toolCall: ToolCall): string | null {
   if (
-    toolCall.name !== "mcp__coding-tutor__create_exercise" ||
+    toolCall.name !== "mcp__mula__create_exercise" ||
     toolCall.status !== "completed" ||
     !toolCall.output
   ) {
@@ -34,7 +34,7 @@ function getExerciseIdFromToolCall(toolCall: ToolCall): string | null {
  */
 function getQuestionIdFromToolCall(toolCall: ToolCall): string | null {
   if (
-    toolCall.name !== "mcp__coding-tutor__ask_concept_question" ||
+    toolCall.name !== "mcp__mula__ask_concept_question" ||
     toolCall.status !== "completed" ||
     !toolCall.output
   ) {
@@ -55,7 +55,7 @@ function getQuestionIdFromToolCall(toolCall: ToolCall): string | null {
 function getExerciseUpdateFromToolCall(
   toolCall: ToolCall
 ): { exerciseId: string; status: string; hint?: string } | null {
-  if (toolCall.name !== "mcp__coding-tutor__update_exercise" || toolCall.status !== "completed") {
+  if (toolCall.name !== "mcp__mula__update_exercise" || toolCall.status !== "completed") {
     return null;
   }
 

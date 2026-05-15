@@ -52,16 +52,16 @@ Provide a helpful hint that guides them toward the solution without giving away 
       prompt: promptText,
       options: {
         mcpServers: {
-          "coding-tutor": tutorServer,
+          mula: tutorServer,
         },
         allowedTools: [
-          "mcp__coding-tutor__read_progress",
-          "mcp__coding-tutor__update_progress",
-          "mcp__coding-tutor__create_exercise",
-          "mcp__coding-tutor__update_exercise",
-          "mcp__coding-tutor__list_topics",
-          "mcp__coding-tutor__ask_concept_question",
-          "mcp__coding-tutor__wrap_up_session",
+          "mcp__mula__read_progress",
+          "mcp__mula__update_progress",
+          "mcp__mula__create_exercise",
+          "mcp__mula__update_exercise",
+          "mcp__mula__list_topics",
+          "mcp__mula__ask_concept_question",
+          "mcp__mula__wrap_up_session",
           "WebSearch",
           "WebFetch",
         ],
@@ -102,13 +102,13 @@ Provide a helpful hint that guides them toward the solution without giving away 
             if (block.type !== "tool_use") continue;
 
             if (
-              block.name === "mcp__coding-tutor__ask_concept_question" ||
-              block.name === "mcp__coding-tutor__create_exercise"
+              block.name === "mcp__mula__ask_concept_question" ||
+              block.name === "mcp__mula__create_exercise"
             ) {
               stopBeforeNextAssistant = true;
             }
 
-            if (block.name === "mcp__coding-tutor__update_exercise") {
+            if (block.name === "mcp__mula__update_exercise") {
               const status = block.input?.status as string | undefined;
               if (status && status !== "passed" && status !== "passed_with_feedback") {
                 stopBeforeNextAssistant = true;
