@@ -6,7 +6,8 @@ import Chat from "@/components/Chat/Chat";
 import { useProjects } from "@/hooks/useProjects";
 import { useSessions } from "@/hooks/useSessions";
 import { useChat } from "@/hooks/useChat";
-import { Button, Spinner } from "@/components/ui";
+import { Button } from "@/components/ui";
+import { retrySidecarConnection } from "@/lib/sidecar";
 
 export default function SessionPage() {
   const navigate = useNavigate();
@@ -17,15 +18,15 @@ export default function SessionPage() {
   }
 
   // Project and session state
-  const { projects, loading: projectsLoading, createProject, updateProject } = useProjects();
+  const { projects, createProject, updateProject } = useProjects();
   const [agentSessionId, setAgentSessionId] = useState<string | undefined>();
   const [testingMode, setTestingMode] = useState(false);
 
   const {
     sessions,
     currentSession,
-    loading: sessionLoading,
     error: sessionError,
+    errorByProject,
     fetchSessions,
     createSession,
     selectSession,
@@ -52,6 +53,7 @@ export default function SessionPage() {
     conceptQuestions,
     setConceptQuestions,
     answerConceptQuestion,
+    failedMessageIds,
   } = useChat({
     projectId,
     sessionId,
@@ -63,10 +65,10 @@ export default function SessionPage() {
     },
   });
 
-  // Fetch sessions for sidebar
+  // Fetch sessions for every project so sidebar counts are accurate up front
   useEffect(() => {
-    fetchSessions(projectId);
-  }, [projectId, fetchSessions]);
+    projects.forEach((p) => fetchSessions(p.id));
+  }, [projects, fetchSessions]);
 
   // Load session data when sessionId changes
   useEffect(() => {
@@ -112,12 +114,31 @@ export default function SessionPage() {
   }, [currentSession?.activeExerciseId, currentSession?.exercises, setActiveExercise]);
 
   // Navigation handlers
+  const tryRestartSidecar = useCallback(async () => {
+    try {
+      await retrySidecarConnection();
+    } catch (err) {
+      console.error("Sidecar restart failed:", err);
+    }
+  }, []);
+
   const handleSelectProject = useCallback(
-    (newProjectId: string) => {
+    async (newProjectId: string) => {
+      // If this project's last fetch failed, attempt to restore the sidecar
+      // before refetching — otherwise the click is a no-op when the backend
+      // is dead.
+      if (errorByProject[newProjectId]) {
+        await tryRestartSidecar();
+      }
       fetchSessions(newProjectId);
     },
-    [fetchSessions]
+    [errorByProject, fetchSessions, tryRestartSidecar]
   );
+
+  const handleRetrySession = useCallback(async () => {
+    await tryRestartSidecar();
+    selectSession(projectId, sessionId);
+  }, [projectId, sessionId, selectSession, tryRestartSidecar]);
 
   const handleSelectSession = useCallback(
     (newProjectId: string, newSessionId: string) => {
@@ -169,9 +190,9 @@ export default function SessionPage() {
       <AppSidebar
         projects={projects}
         sessions={sessions}
+        sessionErrorByProject={errorByProject}
         currentProjectId={projectId}
         currentSessionId={sessionId}
-        loading={projectsLoading}
         onSelectProject={handleSelectProject}
         onSelectSession={handleSelectSession}
         onCreateProject={handleCreateProject}
@@ -180,19 +201,11 @@ export default function SessionPage() {
         onRenameSession={handleRenameSession}
       />
       <SidebarInset className="flex flex-col overflow-hidden">
-        {/* Loading State */}
-        {sessionLoading && !currentSession ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <Spinner size={32} className="mx-auto mb-4" />
-              <p className="text-muted-foreground">Loading session...</p>
-            </div>
-          </div>
-        ) : sessionError ? (
+        {sessionError ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <p className="text-destructive mb-4">Error: {sessionError}</p>
-              <Button onClick={() => selectSession(projectId, sessionId)}>Retry</Button>
+              <Button onClick={handleRetrySession}>Retry</Button>
             </div>
           </div>
         ) : (
@@ -204,7 +217,7 @@ export default function SessionPage() {
             streamingContent={streamingContent}
             streamingToolCalls={streamingToolCalls}
             streamingContentBlocks={streamingContentBlocks}
-            loading={sessionLoading || !currentSession}
+            failedMessageIds={failedMessageIds}
             onSendMessage={handleSendMessage}
             activeExercise={activeExercise}
             onExerciseSubmit={submitExercise}

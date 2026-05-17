@@ -1,19 +1,6 @@
-import type { Progress, ProgressUpdate, TopicSummary } from "../../lib/types";
+import type { Progress, ProgressUpdate, SessionNote, TopicSummary } from "../../lib/types";
 import { getDb } from "../database";
-import { generateId } from "./utils";
-
-// Get progress for a topic
-export async function getProgress(projectId: string, topic: string): Promise<Progress | null> {
-  const db = getDb();
-
-  const row = db
-    .prepare("SELECT * FROM progress WHERE project_id = ? AND topic = ?")
-    .get(projectId, topic) as ProgressRow | undefined;
-
-  if (!row) return null;
-
-  return rowToProgress(row);
-}
+import { generateId, nowIso, parseJsonArray } from "./utils";
 
 interface ProgressRow {
   id: string;
@@ -33,97 +20,103 @@ function rowToProgress(row: ProgressRow): Progress {
     lastUpdated: row.last_updated,
     overallLevel: row.overall_level as Progress["overallLevel"],
     summary: row.summary || "",
-    recentSessions: JSON.parse(row.recent_sessions || "[]"),
-    masteredConcepts: JSON.parse(row.mastered_concepts || "[]"),
-    needsReinforcement: JSON.parse(row.needs_reinforcement || "[]"),
+    recentSessions: parseJsonArray<SessionNote>(row.recent_sessions),
+    masteredConcepts: parseJsonArray<string>(row.mastered_concepts),
+    needsReinforcement: parseJsonArray<string>(row.needs_reinforcement),
   };
 }
 
-function generateProgressSummary(progress: Progress): string {
+function emptyProgress(topic: string): Progress {
+  return {
+    topic,
+    lastUpdated: nowIso(),
+    overallLevel: "beginner",
+    summary: "",
+    recentSessions: [],
+    masteredConcepts: [],
+    needsReinforcement: [],
+  };
+}
+
+function buildSummary(progress: Progress): string {
   const parts: string[] = [];
 
   if (progress.masteredConcepts.length > 0) {
-    parts.push(
-      `Mastered: ${progress.masteredConcepts.slice(0, 3).join(", ")}${progress.masteredConcepts.length > 3 ? "..." : ""}`
-    );
+    const shown = progress.masteredConcepts.slice(0, 3).join(", ");
+    const ellipsis = progress.masteredConcepts.length > 3 ? "..." : "";
+    parts.push(`Mastered: ${shown}${ellipsis}`);
   }
-
   if (progress.needsReinforcement.length > 0) {
     parts.push(`Needs practice: ${progress.needsReinforcement.join(", ")}`);
   }
-
   if (progress.recentSessions.length > 0) {
-    const lastSession = progress.recentSessions[0];
-    parts.push(`Last session: ${lastSession.performance}`);
+    parts.push(`Last session: ${progress.recentSessions[0].performance}`);
   }
 
   return parts.join(". ") || "No progress recorded yet.";
 }
 
-// Update progress for a topic
+function applyUpdates(progress: Progress, updates: ProgressUpdate): Progress {
+  const next: Progress = { ...progress };
+
+  if (updates.overallLevel) {
+    next.overallLevel = updates.overallLevel;
+  }
+
+  if (updates.addToMastered?.length) {
+    next.masteredConcepts = [...new Set([...next.masteredConcepts, ...updates.addToMastered])];
+    next.needsReinforcement = next.needsReinforcement.filter(
+      (c) => !updates.addToMastered!.includes(c)
+    );
+  }
+
+  if (updates.addToReinforcement?.length) {
+    next.needsReinforcement = [
+      ...new Set([...next.needsReinforcement, ...updates.addToReinforcement]),
+    ];
+  }
+
+  if (updates.removeFromReinforcement?.length) {
+    next.needsReinforcement = next.needsReinforcement.filter(
+      (c) => !updates.removeFromReinforcement!.includes(c)
+    );
+  }
+
+  if (updates.sessionNote) {
+    next.recentSessions = [
+      {
+        date: nowIso().split("T")[0],
+        covered: updates.sessionNote.covered,
+        performance: updates.sessionNote.performance,
+        notes: updates.sessionNote.notes || null,
+      },
+      ...next.recentSessions,
+    ].slice(0, 5);
+  }
+
+  next.summary = buildSummary(next);
+  next.lastUpdated = nowIso();
+  return next;
+}
+
+export async function getProgress(projectId: string, topic: string): Promise<Progress | null> {
+  const db = getDb();
+  const row = db
+    .prepare("SELECT * FROM progress WHERE project_id = ? AND topic = ?")
+    .get(projectId, topic) as ProgressRow | undefined;
+  if (!row) return null;
+  return rowToProgress(row);
+}
+
 export async function updateProgress(
   projectId: string,
   topic: string,
   updates: ProgressUpdate
 ): Promise<Progress> {
   const db = getDb();
-  let progress = await getProgress(projectId, topic);
+  const current = (await getProgress(projectId, topic)) ?? emptyProgress(topic);
+  const next = applyUpdates(current, updates);
 
-  if (!progress) {
-    progress = {
-      topic,
-      lastUpdated: new Date().toISOString(),
-      overallLevel: "beginner",
-      summary: "",
-      recentSessions: [],
-      masteredConcepts: [],
-      needsReinforcement: [],
-    };
-  }
-
-  // Apply updates (same logic as JSON storage version)
-  if (updates.overallLevel) {
-    progress.overallLevel = updates.overallLevel;
-  }
-
-  if (updates.addToMastered && updates.addToMastered.length > 0) {
-    progress.masteredConcepts = [
-      ...new Set([...progress.masteredConcepts, ...updates.addToMastered]),
-    ];
-    progress.needsReinforcement = progress.needsReinforcement.filter(
-      (c) => !updates.addToMastered!.includes(c)
-    );
-  }
-
-  if (updates.addToReinforcement && updates.addToReinforcement.length > 0) {
-    progress.needsReinforcement = [
-      ...new Set([...progress.needsReinforcement, ...updates.addToReinforcement]),
-    ];
-  }
-
-  if (updates.removeFromReinforcement && updates.removeFromReinforcement.length > 0) {
-    progress.needsReinforcement = progress.needsReinforcement.filter(
-      (c) => !updates.removeFromReinforcement!.includes(c)
-    );
-  }
-
-  if (updates.sessionNote) {
-    progress.recentSessions.unshift({
-      date: new Date().toISOString().split("T")[0],
-      covered: updates.sessionNote.covered,
-      performance: updates.sessionNote.performance,
-      notes: updates.sessionNote.notes || null,
-    });
-
-    if (progress.recentSessions.length > 5) {
-      progress.recentSessions = progress.recentSessions.slice(0, 5);
-    }
-  }
-
-  progress.summary = generateProgressSummary(progress);
-  progress.lastUpdated = new Date().toISOString();
-
-  // Upsert into database
   db.prepare(
     `INSERT INTO progress (id, project_id, topic, overall_level, summary, mastered_concepts, needs_reinforcement, recent_sessions, last_updated)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -138,21 +131,19 @@ export async function updateProgress(
     generateId(),
     projectId,
     topic,
-    progress.overallLevel,
-    progress.summary,
-    JSON.stringify(progress.masteredConcepts),
-    JSON.stringify(progress.needsReinforcement),
-    JSON.stringify(progress.recentSessions),
-    progress.lastUpdated
+    next.overallLevel,
+    next.summary,
+    JSON.stringify(next.masteredConcepts),
+    JSON.stringify(next.needsReinforcement),
+    JSON.stringify(next.recentSessions),
+    next.lastUpdated
   );
 
-  return progress;
+  return next;
 }
 
-// List all topics with progress for a project
 export async function listTopicsWithProgress(projectId: string): Promise<TopicSummary[]> {
   const db = getDb();
-
   const rows = db
     .prepare(
       "SELECT topic, overall_level, last_updated FROM progress WHERE project_id = ? ORDER BY last_updated DESC"

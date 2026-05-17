@@ -67,6 +67,7 @@ export function useChat({
   const [activeExercise, setActiveExercise] = useState<Exercise | null>(null);
   const [exercises, setExercises] = useState<Record<string, Exercise>>({});
   const [conceptQuestions, setConceptQuestions] = useState<Record<string, ConceptQuestion>>({});
+  const [failedMessageIds, setFailedMessageIds] = useState<Set<string>>(new Set());
   const abortControllerRef = useRef<AbortController | null>(null);
   const titleGeneratedRef = useRef(false);
   const messagesRef = useRef<Message[]>([]);
@@ -150,6 +151,48 @@ export function useChat({
   // Generate a unique message ID
   const generateMessageId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
+  // Persist a session-level update with retry. PATCHes carry the full messages
+  // array (when present), so a single later success retroactively covers
+  // earlier failed attempts — we clear all failure markers on any 2xx.
+  const persistSession = useCallback(
+    async (body: Record<string, unknown>, markFailIdOnFail?: string): Promise<boolean> => {
+      if (!projectId || !sessionId) return false;
+      let lastError: unknown = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const response = await sidecarFetch(`/api/projects/${projectId}/sessions/${sessionId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          if (response.ok) {
+            if (mountedRef.current) {
+              setFailedMessageIds((prev) => (prev.size > 0 ? new Set() : prev));
+            }
+            return true;
+          }
+          lastError = new Error(`HTTP ${response.status}`);
+        } catch (err) {
+          lastError = err;
+        }
+        if (attempt < 2) {
+          await new Promise((resolve) => setTimeout(resolve, 2 ** attempt * 1000));
+        }
+        if (!mountedRef.current) return false;
+      }
+      console.error("Persist failed after retries:", lastError);
+      if (markFailIdOnFail && mountedRef.current) {
+        setFailedMessageIds((prev) => {
+          const next = new Set(prev);
+          next.add(markFailIdOnFail);
+          return next;
+        });
+      }
+      return false;
+    },
+    [projectId, sessionId]
+  );
+
   // Send a message
   const sendMessage = useCallback(
     async (
@@ -175,6 +218,11 @@ export function useChat({
         };
         messagesRef.current = [...messagesRef.current, userMessage];
         setMessages(messagesRef.current);
+
+        // Persist user message immediately so a mid-stream crash doesn't lose it.
+        // Without this, any tool calls that fire during the assistant turn
+        // (e.g. create_exercise) end up orphaned in storage with no surrounding context.
+        persistSession({ messages: messagesRef.current }, userMessage.id);
       }
 
       setIsStreaming(true);
@@ -465,6 +513,11 @@ export function useChat({
                 ) {
                   agentSessionIdRef.current = sdkMessage.session_id;
                   onSessionId?.(sdkMessage.session_id);
+
+                  // Persist immediately. If the turn dies before we PATCH the
+                  // full messages array below, the next reload still resumes
+                  // the same agent session instead of starting cold.
+                  persistSession({ agentSessionId: sdkMessage.session_id });
                 }
 
                 // Handle result message
@@ -520,25 +573,14 @@ export function useChat({
           const updatedMessages = messagesRef.current;
           setMessages(updatedMessages);
 
-          // Persist messages and agentSessionId to storage (fire and forget, but with error handling)
-          sidecarFetch(`/api/projects/${projectId}/sessions/${sessionId}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
+          // Persist messages and agentSessionId to storage
+          persistSession(
+            {
               messages: updatedMessages,
               agentSessionId: agentSessionIdRef.current,
-            }),
-          })
-            .then((response) => {
-              if (!response.ok) {
-                console.error("Failed to persist messages:", response.status);
-                setError("Failed to save messages");
-              }
-            })
-            .catch((persistError) => {
-              console.error("Failed to persist messages:", persistError);
-              setError("Failed to save messages");
-            });
+            },
+            assistantMessage.id
+          );
 
           // Generate title from first user message (fire and forget)
           if (!titleGeneratedRef.current && updatedMessages.length === 2 && action === "message") {
@@ -546,19 +588,9 @@ export function useChat({
             const firstUserMessage = updatedMessages.find((m) => m.role === "user");
             if (firstUserMessage) {
               const generatedTitle = generateTitleFromMessage(firstUserMessage.content);
-              sidecarFetch(`/api/projects/${projectId}/sessions/${sessionId}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ title: generatedTitle }),
-              })
-                .then((response) => {
-                  if (response.ok) {
-                    onTitleGenerated?.(generatedTitle);
-                  }
-                })
-                .catch((err) => {
-                  console.error("Failed to update session title:", err);
-                });
+              persistSession({ title: generatedTitle }).then((ok) => {
+                if (ok) onTitleGenerated?.(generatedTitle);
+              });
             }
           }
         }
@@ -576,7 +608,15 @@ export function useChat({
         abortControllerRef.current = null;
       }
     },
-    [projectId, sessionId, onExerciseCreated, onSessionId, onTitleGenerated, fetchSessionWithRetry]
+    [
+      projectId,
+      sessionId,
+      onExerciseCreated,
+      onSessionId,
+      onTitleGenerated,
+      fetchSessionWithRetry,
+      persistSession,
+    ]
   );
 
   // Submit exercise
@@ -915,5 +955,6 @@ Please provide feedback on this answer. Explain why it is ${selectedOption.corre
     conceptQuestions,
     setConceptQuestions,
     answerConceptQuestion,
+    failedMessageIds,
   };
 }

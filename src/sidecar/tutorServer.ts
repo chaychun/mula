@@ -1,14 +1,9 @@
 import { createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
 import * as storage from "./storage";
-import {
-  addExerciseToSession,
-  setActiveExerciseId,
-  updateExerciseInSession,
-  addConceptQuestionToSession,
-  getExercise,
-  updateLatestAttemptStatus,
-} from "./storage/sessions";
+import { addExercise, setActiveExerciseId, updateExercise, getExercise } from "./storage/exercises";
+import { updateLatestAttemptStatus } from "./storage/attempts";
+import { addConceptQuestion } from "./storage/conceptQuestions";
 import { generateId } from "./storage/utils";
 import type { Exercise, ConceptQuestion } from "../lib/types";
 
@@ -173,7 +168,7 @@ export const tutorServer = createSdkMcpServer({
           updatedAt: new Date().toISOString(),
         };
 
-        await addExerciseToSession(args.projectId, args.sessionId, exercise);
+        await addExercise(args.projectId, args.sessionId, exercise);
         await setActiveExerciseId(args.projectId, args.sessionId, exerciseId);
 
         return {
@@ -229,12 +224,7 @@ export const tutorServer = createSdkMcpServer({
           }
         }
 
-        const exerciseFound = await updateExerciseInSession(
-          projectId,
-          sessionId,
-          exerciseId,
-          updates
-        );
+        const exerciseFound = await updateExercise(projectId, sessionId, exerciseId, updates);
 
         if (!exerciseFound) {
           return {
@@ -383,7 +373,7 @@ export const tutorServer = createSdkMcpServer({
           createdAt: new Date().toISOString(),
         };
 
-        await addConceptQuestionToSession(args.projectId, args.sessionId, conceptQuestion);
+        await addConceptQuestion(args.projectId, args.sessionId, conceptQuestion);
 
         return {
           content: [

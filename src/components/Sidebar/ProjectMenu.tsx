@@ -1,7 +1,15 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Folder, FolderOpen, CaretRight, CaretDown, Circle, Plus } from "@phosphor-icons/react";
+import {
+  Folder,
+  FolderOpen,
+  CaretRight,
+  CaretDown,
+  Circle,
+  Plus,
+  WarningCircle,
+} from "@phosphor-icons/react";
 import { Collapsible as CollapsiblePrimitive } from "@base-ui/react/collapsible";
 import type { Project, Session } from "@/lib/types";
 import {
@@ -18,12 +26,14 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { InlineEdit } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 interface ProjectMenuProps {
   projects: Project[];
   sessions: Session[];
+  sessionErrorByProject?: Record<string, string>;
   currentProjectId: string | null;
   currentSessionId: string | null;
   onSelectProject: (projectId: string) => void;
@@ -42,6 +52,7 @@ interface EditingState {
 export default function ProjectMenu({
   projects,
   sessions,
+  sessionErrorByProject,
   currentProjectId,
   currentSessionId,
   onSelectProject,
@@ -145,9 +156,28 @@ export default function ProjectMenu({
                         <Folder className="size-4" />
                       )}
                       <span className="truncate flex-1">{project.name}</span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {projectSessions.length}
-                      </span>
+                      {sessionErrorByProject?.[project.id] ? (
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={
+                              <span
+                                className="inline-flex items-center text-destructive"
+                                aria-label="Failed to load sessions"
+                              />
+                            }
+                          >
+                            <WarningCircle size={14} weight="fill" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            Couldn't load sessions ({sessionErrorByProject[project.id]}). Click to
+                            retry.
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground">
+                          {projectSessions.length}
+                        </span>
+                      )}
                     </CollapsiblePrimitive.Trigger>
                   </ContextMenuTrigger>
                   <ContextMenuContent>

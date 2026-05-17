@@ -1,11 +1,29 @@
 import type { Project } from "../../lib/types";
 import { getDb } from "../database";
-import { generateId } from "./utils";
+import { generateId, nowIso } from "./utils";
+
+interface ProjectRow {
+  id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+function rowToProject(row: ProjectRow): Project {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
 
 export async function createProject(name: string, description?: string): Promise<Project> {
   const db = getDb();
   const id = generateId();
-  const now = new Date().toISOString();
+  const now = nowIso();
 
   db.prepare(
     "INSERT INTO projects (id, name, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
@@ -16,27 +34,10 @@ export async function createProject(name: string, description?: string): Promise
 
 export async function getProject(projectId: string): Promise<Project | null> {
   const db = getDb();
-  const row = db
-    .prepare("SELECT id, name, description, created_at, updated_at FROM projects WHERE id = ?")
-    .get(projectId) as
-    | {
-        id: string;
-        name: string;
-        description: string | null;
-        created_at: string;
-        updated_at: string;
-      }
+  const row = db.prepare("SELECT * FROM projects WHERE id = ?").get(projectId) as
+    | ProjectRow
     | undefined;
-
-  if (!row) return null;
-
-  return {
-    id: row.id,
-    name: row.name,
-    description: row.description ?? undefined,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
+  return row ? rowToProject(row) : null;
 }
 
 export async function updateProject(
@@ -47,7 +48,7 @@ export async function updateProject(
   const existing = await getProject(projectId);
   if (!existing) return null;
 
-  const now = new Date().toISOString();
+  const now = nowIso();
   const newName = updates.name ?? existing.name;
   const newDescription =
     updates.description !== undefined ? updates.description : existing.description;
@@ -70,23 +71,6 @@ export async function deleteProject(projectId: string): Promise<boolean> {
 
 export async function listProjects(): Promise<Project[]> {
   const db = getDb();
-  const rows = db
-    .prepare(
-      "SELECT id, name, description, created_at, updated_at FROM projects ORDER BY updated_at DESC"
-    )
-    .all() as Array<{
-    id: string;
-    name: string;
-    description: string | null;
-    created_at: string;
-    updated_at: string;
-  }>;
-
-  return rows.map((row) => ({
-    id: row.id,
-    name: row.name,
-    description: row.description ?? undefined,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  }));
+  const rows = db.prepare("SELECT * FROM projects ORDER BY updated_at DESC").all() as ProjectRow[];
+  return rows.map(rowToProject);
 }

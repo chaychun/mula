@@ -14,6 +14,7 @@ interface MessageListProps {
   streamingToolCalls: ToolCall[];
   streamingContentBlocks: ContentBlock[];
   isStreaming: boolean;
+  failedMessageIds?: Set<string>;
   onExerciseRetry?: (exerciseId: string, code: string) => void;
   onConceptAnswer?: (questionId: string, optionIndex: number) => void;
 }
@@ -26,6 +27,7 @@ export default function MessageList({
   streamingToolCalls,
   streamingContentBlocks,
   isStreaming,
+  failedMessageIds,
   onExerciseRetry,
   onConceptAnswer,
 }: MessageListProps) {
@@ -59,6 +61,7 @@ export default function MessageList({
             message={message}
             exercises={exercises}
             conceptQuestions={conceptQuestions}
+            persistFailed={failedMessageIds?.has(message.id) ?? false}
             onRetry={onExerciseRetry}
             onConceptAnswer={onConceptAnswer}
           />

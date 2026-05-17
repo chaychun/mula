@@ -154,7 +154,7 @@ router.post(
         }
       }
 
-      const attempt = await storage.submitExerciseAttempt(
+      const attempt = await storage.submitAttempt(
         req.params.projectId,
         req.params.sessionId,
         req.params.exerciseId,
@@ -182,7 +182,7 @@ router.post(
     try {
       const { projectId, sessionId, exerciseId } = req.params;
 
-      const updated = await storage.updateExerciseInSession(projectId, sessionId, exerciseId, {
+      const updated = await storage.updateExercise(projectId, sessionId, exerciseId, {
         status: "active",
       });
 
@@ -207,7 +207,7 @@ router.post(
     try {
       const { projectId, sessionId, exerciseId } = req.params;
 
-      const updated = await storage.updateExerciseInSession(projectId, sessionId, exerciseId, {
+      const updated = await storage.updateExercise(projectId, sessionId, exerciseId, {
         status: "skipped",
       });
 

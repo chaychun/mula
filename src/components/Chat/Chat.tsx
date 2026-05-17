@@ -97,7 +97,7 @@ interface ChatProps {
   streamingContent: string;
   streamingToolCalls: ToolCall[];
   streamingContentBlocks: ContentBlock[];
-  loading?: boolean;
+  failedMessageIds?: Set<string>;
   onSendMessage: (message: string) => void;
   activeExercise?: Exercise | null;
   onExerciseSubmit?: (code: string, blankValues?: Record<string, string>) => void;
@@ -118,7 +118,7 @@ export default function Chat({
   streamingContent,
   streamingToolCalls,
   streamingContentBlocks,
-  loading = false,
+  failedMessageIds,
   onSendMessage,
   activeExercise,
   onExerciseSubmit,
@@ -131,7 +131,7 @@ export default function Chat({
   className = "",
 }: ChatProps) {
   const isEmptyState =
-    !loading && messages.length === 0 && !streamingContent && streamingToolCalls.length === 0;
+    messages.length === 0 && !streamingContent && streamingToolCalls.length === 0;
 
   return (
     <div className={`flex flex-col h-full overflow-hidden ${className}`}>
@@ -140,14 +140,7 @@ export default function Chat({
         <ChatContainerRoot className="h-full">
           <ChatContainerContent className="px-4 pt-4 pb-8">
             <div className="w-full max-w-3xl mx-auto">
-              {loading ? (
-                <div className="h-full flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="h-7 w-32 bg-muted animate-pulse mx-auto mb-2"></div>
-                    <div className="h-5 w-56 bg-muted animate-pulse mx-auto"></div>
-                  </div>
-                </div>
-              ) : isEmptyState ? (
+              {isEmptyState ? (
                 <EmptyState
                   onSuggestionClick={onSendMessage}
                   onSendMessage={onSendMessage}
@@ -163,6 +156,7 @@ export default function Chat({
                   streamingToolCalls={streamingToolCalls}
                   streamingContentBlocks={streamingContentBlocks}
                   isStreaming={isStreaming}
+                  failedMessageIds={failedMessageIds}
                   onExerciseRetry={onExerciseRetry}
                   onConceptAnswer={onConceptAnswer}
                 />
