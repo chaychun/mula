@@ -97,6 +97,7 @@ interface ChatProps {
   streamingContent: string;
   streamingToolCalls: ToolCall[];
   streamingContentBlocks: ContentBlock[];
+  failedMessageIds?: Set<string>;
   onSendMessage: (message: string) => void;
   activeExercise?: Exercise | null;
   onExerciseSubmit?: (code: string, blankValues?: Record<string, string>) => void;
@@ -117,6 +118,7 @@ export default function Chat({
   streamingContent,
   streamingToolCalls,
   streamingContentBlocks,
+  failedMessageIds,
   onSendMessage,
   activeExercise,
   onExerciseSubmit,
@@ -154,6 +156,7 @@ export default function Chat({
                   streamingToolCalls={streamingToolCalls}
                   streamingContentBlocks={streamingContentBlocks}
                   isStreaming={isStreaming}
+                  failedMessageIds={failedMessageIds}
                   onExerciseRetry={onExerciseRetry}
                   onConceptAnswer={onConceptAnswer}
                 />

@@ -51,6 +51,7 @@ export default function SessionPage() {
     conceptQuestions,
     setConceptQuestions,
     answerConceptQuestion,
+    failedMessageIds,
   } = useChat({
     projectId,
     sessionId,
@@ -194,6 +195,7 @@ export default function SessionPage() {
             streamingContent={streamingContent}
             streamingToolCalls={streamingToolCalls}
             streamingContentBlocks={streamingContentBlocks}
+            failedMessageIds={failedMessageIds}
             onSendMessage={handleSendMessage}
             activeExercise={activeExercise}
             onExerciseSubmit={submitExercise}

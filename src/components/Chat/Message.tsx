@@ -1,13 +1,33 @@
 "use client";
 
+import { WarningCircle } from "@phosphor-icons/react";
 import type { Message, Exercise, ToolCall, ConceptQuestion } from "@/lib/types";
 import { Markdown } from "@/components/ui/markdown";
 import { Tool } from "@/components/ui/tool";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ExerciseSubmissionCard } from "./ExerciseSubmissionCard";
 import ExerciseBlock from "./ExerciseBlock";
 import ExerciseUpdateBlock from "./ExerciseUpdateBlock";
 import ConceptQuestionBlock from "./ConceptQuestionBlock";
 import { useStreamBuffer } from "@/hooks/useStreamBuffer";
+
+function PersistFailedBadge() {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <span
+            className="inline-flex items-center justify-center text-destructive mr-2 self-center"
+            aria-label="Failed to save"
+          />
+        }
+      >
+        <WarningCircle size={16} weight="fill" />
+      </TooltipTrigger>
+      <TooltipContent>Not saved. Send another message to retry.</TooltipContent>
+    </Tooltip>
+  );
+}
 
 /**
  * Extract exerciseId from a create_exercise tool call output
@@ -74,6 +94,7 @@ interface ChatMessageProps {
   message: Message;
   exercises?: Record<string, Exercise>;
   conceptQuestions?: Record<string, ConceptQuestion>;
+  persistFailed?: boolean;
   onRetry?: (exerciseId: string, code: string) => void;
   onConceptAnswer?: (questionId: string, optionIndex: number) => void;
 }
@@ -82,6 +103,7 @@ export default function ChatMessage({
   message,
   exercises,
   conceptQuestions,
+  persistFailed = false,
   onRetry,
   onConceptAnswer,
 }: ChatMessageProps) {
@@ -122,7 +144,8 @@ export default function ChatMessage({
 
     if (isUser) {
       return (
-        <div className="flex w-full justify-end">
+        <div className="flex w-full justify-end items-start">
+          {persistFailed && <PersistFailedBadge />}
           <div className="max-w-[85%] px-4 py-2 bg-primary text-primary-foreground">
             <div className="space-y-2">
               {message.contentBlocks.map((block, index) => {
@@ -198,7 +221,8 @@ export default function ChatMessage({
   // Fallback to legacy rendering (tool calls first, then content)
   if (isUser) {
     return (
-      <div className="flex w-full justify-end">
+      <div className="flex w-full justify-end items-start">
+        {persistFailed && <PersistFailedBadge />}
         <div className="max-w-[85%] px-4 py-2 bg-primary text-primary-foreground">
           <div className="space-y-2">
             {(isStreaming ? bufferedText : message.content) && (
