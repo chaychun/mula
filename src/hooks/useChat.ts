@@ -477,6 +477,17 @@ export function useChat({
                 ) {
                   agentSessionIdRef.current = sdkMessage.session_id;
                   onSessionId?.(sdkMessage.session_id);
+
+                  // Persist immediately. If the turn dies before we PATCH the
+                  // full messages array below, the next reload still resumes
+                  // the same agent session instead of starting cold.
+                  sidecarFetch(`/api/projects/${projectId}/sessions/${sessionId}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ agentSessionId: sdkMessage.session_id }),
+                  }).catch((err) => {
+                    console.error("Failed to persist agentSessionId:", err);
+                  });
                 }
 
                 // Handle result message
