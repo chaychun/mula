@@ -79,6 +79,22 @@ export async function reinitSidecar(): Promise<void> {
 }
 
 /**
+ * Kill the current sidecar (if any) and spawn a fresh one, then refresh the
+ * cached port/auth and wait for /health. Use this as the recovery step before
+ * any user-visible retry that may have failed because the sidecar process
+ * itself is dead — a webview reload alone won't bring the backend back.
+ */
+export async function retrySidecarConnection(): Promise<void> {
+  if (!window.__TAURI_INTERNALS__) {
+    await initSidecar();
+    return;
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  await invoke("restart_sidecar");
+  await reinitSidecar();
+}
+
+/**
  * Get the base URL for sidecar API requests.
  */
 export function getSidecarBaseUrl(): string {

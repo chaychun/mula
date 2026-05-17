@@ -5,7 +5,7 @@ import { DevBranchTag } from "@/components/DevBranchTag";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { CredentialProvider } from "@/hooks/useCredentialStatus";
-import { initSidecar, reinitSidecar } from "@/lib/sidecar";
+import { initSidecar, retrySidecarConnection } from "@/lib/sidecar";
 import Home from "@/pages/Home";
 import SessionPage from "@/pages/SessionPage";
 import "@/app/globals.css";
@@ -48,13 +48,7 @@ function renderApp() {
 }
 
 async function retrySidecar() {
-  if (window.__TAURI_INTERNALS__) {
-    const { invoke } = await import("@tauri-apps/api/core");
-    await invoke("restart_sidecar");
-    await reinitSidecar();
-  } else {
-    await initSidecar();
-  }
+  await retrySidecarConnection();
   renderApp();
 }
 

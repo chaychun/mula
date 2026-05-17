@@ -7,6 +7,7 @@ import { useProjects } from "@/hooks/useProjects";
 import { useSessions } from "@/hooks/useSessions";
 import { useChat } from "@/hooks/useChat";
 import { Button } from "@/components/ui";
+import { retrySidecarConnection } from "@/lib/sidecar";
 
 export default function SessionPage() {
   const navigate = useNavigate();
@@ -114,11 +115,30 @@ export default function SessionPage() {
 
   // Navigation handlers
   const handleSelectProject = useCallback(
-    (newProjectId: string) => {
+    async (newProjectId: string) => {
+      // If this project's last fetch failed, attempt to restore the sidecar
+      // before refetching — otherwise the click is a no-op when the backend
+      // is dead.
+      if (errorByProject[newProjectId]) {
+        try {
+          await retrySidecarConnection();
+        } catch (err) {
+          console.error("Sidecar restart failed:", err);
+        }
+      }
       fetchSessions(newProjectId);
     },
-    [fetchSessions]
+    [errorByProject, fetchSessions]
   );
+
+  const handleRetrySession = useCallback(async () => {
+    try {
+      await retrySidecarConnection();
+    } catch (err) {
+      console.error("Sidecar restart failed:", err);
+    }
+    selectSession(projectId, sessionId);
+  }, [projectId, sessionId, selectSession]);
 
   const handleSelectSession = useCallback(
     (newProjectId: string, newSessionId: string) => {
@@ -185,7 +205,7 @@ export default function SessionPage() {
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <p className="text-destructive mb-4">Error: {sessionError}</p>
-              <Button onClick={() => selectSession(projectId, sessionId)}>Retry</Button>
+              <Button onClick={handleRetrySession}>Retry</Button>
             </div>
           </div>
         ) : (
