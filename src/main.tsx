@@ -22,8 +22,10 @@ if (window.__TAURI_INTERNALS__) {
   });
 }
 
+const root = createRoot(document.getElementById("root")!);
+
 function renderApp() {
-  createRoot(document.getElementById("root")!).render(
+  root.render(
     <StrictMode>
       <ThemeProvider>
         <CredentialProvider>
@@ -53,7 +55,7 @@ async function retrySidecar() {
 }
 
 function renderSidecarError(message: string) {
-  createRoot(document.getElementById("root")!).render(
+  root.render(
     <ThemeProvider>
       <div className="flex h-svh w-full items-center justify-center bg-background p-6">
         <div className="max-w-md space-y-4 text-center">

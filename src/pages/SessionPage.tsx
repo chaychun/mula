@@ -114,31 +114,31 @@ export default function SessionPage() {
   }, [currentSession?.activeExerciseId, currentSession?.exercises, setActiveExercise]);
 
   // Navigation handlers
+  const tryRestartSidecar = useCallback(async () => {
+    try {
+      await retrySidecarConnection();
+    } catch (err) {
+      console.error("Sidecar restart failed:", err);
+    }
+  }, []);
+
   const handleSelectProject = useCallback(
     async (newProjectId: string) => {
       // If this project's last fetch failed, attempt to restore the sidecar
       // before refetching — otherwise the click is a no-op when the backend
       // is dead.
       if (errorByProject[newProjectId]) {
-        try {
-          await retrySidecarConnection();
-        } catch (err) {
-          console.error("Sidecar restart failed:", err);
-        }
+        await tryRestartSidecar();
       }
       fetchSessions(newProjectId);
     },
-    [errorByProject, fetchSessions]
+    [errorByProject, fetchSessions, tryRestartSidecar]
   );
 
   const handleRetrySession = useCallback(async () => {
-    try {
-      await retrySidecarConnection();
-    } catch (err) {
-      console.error("Sidecar restart failed:", err);
-    }
+    await tryRestartSidecar();
     selectSession(projectId, sessionId);
-  }, [projectId, sessionId, selectSession]);
+  }, [projectId, sessionId, selectSession, tryRestartSidecar]);
 
   const handleSelectSession = useCallback(
     (newProjectId: string, newSessionId: string) => {

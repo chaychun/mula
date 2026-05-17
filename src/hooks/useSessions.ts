@@ -11,7 +11,9 @@ export function useSessions(_projectId: string | null) {
   const [error, setError] = useState<string | null>(null);
   const [errorByProject, setErrorByProject] = useState<Record<string, string>>({});
 
-  // Fetch sessions for a project (merges with existing sessions from other projects)
+  // Fetch sessions for a project (merges with existing sessions from other projects).
+  // Failures are tracked per-project in `errorByProject`; the page-level `error`
+  // is reserved for single-session fetch failures.
   const fetchSessions = useCallback(async (pid: string) => {
     try {
       setLoading(true);
@@ -23,7 +25,6 @@ export function useSessions(_projectId: string | null) {
         const otherProjectSessions = prev.filter((s) => s.projectId !== pid);
         return [...otherProjectSessions, ...data];
       });
-      setError(null);
       setErrorByProject((prev) => {
         if (!prev[pid]) return prev;
         const next = { ...prev };
@@ -32,7 +33,6 @@ export function useSessions(_projectId: string | null) {
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
-      setError(message);
       setErrorByProject((prev) => ({ ...prev, [pid]: message }));
     } finally {
       setLoading(false);

@@ -166,7 +166,9 @@ export function useChat({
             body: JSON.stringify(body),
           });
           if (response.ok) {
-            setFailedMessageIds((prev) => (prev.size > 0 ? new Set() : prev));
+            if (mountedRef.current) {
+              setFailedMessageIds((prev) => (prev.size > 0 ? new Set() : prev));
+            }
             return true;
           }
           lastError = new Error(`HTTP ${response.status}`);
@@ -176,9 +178,10 @@ export function useChat({
         if (attempt < 2) {
           await new Promise((resolve) => setTimeout(resolve, 2 ** attempt * 1000));
         }
+        if (!mountedRef.current) return false;
       }
       console.error("Persist failed after retries:", lastError);
-      if (markFailIdOnFail) {
+      if (markFailIdOnFail && mountedRef.current) {
         setFailedMessageIds((prev) => {
           const next = new Set(prev);
           next.add(markFailIdOnFail);
