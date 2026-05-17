@@ -5,7 +5,7 @@ import { DevBranchTag } from "@/components/DevBranchTag";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { CredentialProvider } from "@/hooks/useCredentialStatus";
-import { initSidecar } from "@/lib/sidecar";
+import { initSidecar, reinitSidecar } from "@/lib/sidecar";
 import Home from "@/pages/Home";
 import SessionPage from "@/pages/SessionPage";
 import "@/app/globals.css";
@@ -47,6 +47,17 @@ function renderApp() {
   );
 }
 
+async function retrySidecar() {
+  if (window.__TAURI_INTERNALS__) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    await invoke("restart_sidecar");
+    await reinitSidecar();
+  } else {
+    await initSidecar();
+  }
+  renderApp();
+}
+
 function renderSidecarError(message: string) {
   createRoot(document.getElementById("root")!).render(
     <ThemeProvider>
@@ -62,7 +73,12 @@ function renderSidecarError(message: string) {
           </pre>
           <button
             type="button"
-            onClick={() => window.location.reload()}
+            onClick={() => {
+              retrySidecar().catch((err: unknown) => {
+                console.error("Retry failed:", err);
+                renderSidecarError(err instanceof Error ? err.message : String(err));
+              });
+            }}
             className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium"
           >
             Retry
