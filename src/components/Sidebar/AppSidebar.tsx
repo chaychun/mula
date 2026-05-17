@@ -25,6 +25,7 @@ import ProjectMenu from "./ProjectMenu";
 interface AppSidebarProps {
   projects: Project[];
   sessions: Session[];
+  sessionErrorByProject?: Record<string, string>;
   currentProjectId: string | null;
   currentSessionId: string | null;
   onSelectProject: (projectId: string) => void;
@@ -38,6 +39,7 @@ interface AppSidebarProps {
 export default function AppSidebar({
   projects,
   sessions,
+  sessionErrorByProject,
   currentProjectId,
   currentSessionId,
   onSelectProject,
@@ -87,6 +89,7 @@ export default function AppSidebar({
               <ProjectMenu
                 projects={projects}
                 sessions={sessions}
+                sessionErrorByProject={sessionErrorByProject}
                 currentProjectId={currentProjectId}
                 currentSessionId={currentSessionId}
                 onSelectProject={onSelectProject}

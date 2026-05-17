@@ -25,6 +25,7 @@ export default function SessionPage() {
     sessions,
     currentSession,
     error: sessionError,
+    errorByProject,
     fetchSessions,
     createSession,
     selectSession,
@@ -169,6 +170,7 @@ export default function SessionPage() {
       <AppSidebar
         projects={projects}
         sessions={sessions}
+        sessionErrorByProject={errorByProject}
         currentProjectId={projectId}
         currentSessionId={sessionId}
         onSelectProject={handleSelectProject}
