@@ -24,7 +24,7 @@ async function findSidecarPort(start: number, maxAttempts = 10): Promise<number 
  * Poll /health on a known port until it responds. Used after a sidecar spawn
  * because Express may not be bound yet immediately.
  */
-async function waitForSidecarHealth(port: number, attempts = 30, intervalMs = 100): Promise<void> {
+async function waitForSidecarHealth(port: number, attempts = 100, intervalMs = 100): Promise<void> {
   for (let i = 0; i < attempts; i++) {
     try {
       const res = await fetch(`http://127.0.0.1:${port}/health`, {

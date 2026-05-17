@@ -22,10 +22,7 @@ if (window.__TAURI_INTERNALS__) {
   });
 }
 
-// Initialize sidecar connection before rendering.
-// In Tauri, this fetches the port + auth token from the Rust core via invoke().
-// In dev mode (no Tauri), it falls back to localhost:3001 defaults.
-initSidecar().then(() => {
+function renderApp() {
   createRoot(document.getElementById("root")!).render(
     <StrictMode>
       <ThemeProvider>
@@ -48,4 +45,40 @@ initSidecar().then(() => {
       </ThemeProvider>
     </StrictMode>
   );
-});
+}
+
+function renderSidecarError(message: string) {
+  createRoot(document.getElementById("root")!).render(
+    <ThemeProvider>
+      <div className="flex h-svh w-full items-center justify-center bg-background p-6">
+        <div className="max-w-md space-y-4 text-center">
+          <h1 className="text-xl font-bold text-foreground">Failed to start backend</h1>
+          <p className="text-sm text-muted-foreground">
+            The local sidecar process didn't respond. This usually means the backend crashed on
+            launch, or another instance is holding the port.
+          </p>
+          <pre className="text-left text-xs text-muted-foreground bg-muted px-3 py-2 overflow-auto">
+            {message}
+          </pre>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    </ThemeProvider>
+  );
+}
+
+// Initialize sidecar connection before rendering.
+// In Tauri, this fetches the port + auth token from the Rust core via invoke().
+// In dev mode (no Tauri), it falls back to localhost:3001 defaults.
+initSidecar()
+  .then(renderApp)
+  .catch((err: unknown) => {
+    console.error("Sidecar initialization failed:", err);
+    renderSidecarError(err instanceof Error ? err.message : String(err));
+  });
