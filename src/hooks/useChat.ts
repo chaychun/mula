@@ -175,6 +175,18 @@ export function useChat({
         };
         messagesRef.current = [...messagesRef.current, userMessage];
         setMessages(messagesRef.current);
+
+        // Persist user message immediately so a mid-stream crash doesn't lose it.
+        // Without this, any tool calls that fire during the assistant turn
+        // (e.g. create_exercise) end up orphaned in storage with no surrounding context.
+        sidecarFetch(`/api/projects/${projectId}/sessions/${sessionId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: messagesRef.current }),
+        }).catch((err) => {
+          console.error("Failed to persist user message:", err);
+          setError("Failed to save message");
+        });
       }
 
       setIsStreaming(true);
