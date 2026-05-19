@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Check, ShieldCheck, Sparkle, Trash, WarningCircle } from "@phosphor-icons/react";
+import { CheckIcon, ShieldCheckIcon, SparkleIcon, TrashIcon, WarningCircleIcon } from "@phosphor-icons/react";
 import { useCredentialStatus } from "@/hooks/useCredentialStatus";
 
 interface AuthSettingsModalProps {
@@ -93,7 +93,7 @@ export default function AuthSettingsModal({ isOpen, onClose }: AuthSettingsModal
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <ShieldCheck size={20} weight="duotone" />
+            <ShieldCheckIcon size={20} weight="duotone" />
             Anthropic authentication
           </DialogTitle>
           <DialogDescription>
@@ -107,9 +107,9 @@ export default function AuthSettingsModal({ isOpen, onClose }: AuthSettingsModal
           <span className="text-muted-foreground">Currently active</span>
           <span className="flex items-center gap-1.5 font-medium">
             {status.active_kind ? (
-              <Check size={14} weight="bold" className="text-primary" />
+              <CheckIcon size={14} weight="bold" className="text-primary" />
             ) : (
-              <WarningCircle size={14} weight="fill" className="text-destructive" />
+              <WarningCircleIcon size={14} weight="fill" className="text-destructive" />
             )}
             {loading ? "Loading…" : activeLabel}
           </span>
@@ -123,7 +123,7 @@ export default function AuthSettingsModal({ isOpen, onClose }: AuthSettingsModal
               : "border-border bg-muted/30"
           }`}
         >
-          <Sparkle
+          <SparkleIcon
             size={18}
             weight="fill"
             className={
@@ -136,7 +136,7 @@ export default function AuthSettingsModal({ isOpen, onClose }: AuthSettingsModal
               {status.local_cli_installed ? (
                 status.local_cli_authenticated ? (
                   <span className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-primary">
-                    <Check size={10} weight="bold" /> Authenticated
+                    <CheckIcon size={10} weight="bold" /> Authenticated
                   </span>
                 ) : (
                   <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -205,7 +205,7 @@ export default function AuthSettingsModal({ isOpen, onClose }: AuthSettingsModal
             <div className="flex gap-2">
               {status.has_api_key_stored && (
                 <Button variant="outline" size="sm" onClick={handleClear} disabled={saving}>
-                  <Trash size={14} />
+                  <TrashIcon size={14} />
                   Clear
                 </Button>
               )}
@@ -222,7 +222,7 @@ export default function AuthSettingsModal({ isOpen, onClose }: AuthSettingsModal
 
         {error && (
           <div className="flex items-start gap-2 border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-            <WarningCircle size={14} weight="fill" className="mt-0.5 shrink-0" />
+            <WarningCircleIcon size={14} weight="fill" className="mt-0.5 shrink-0" />
             <span>{error}</span>
           </div>
         )}

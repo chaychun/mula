@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowUp } from "@phosphor-icons/react";
+import { ArrowUpIcon } from "@phosphor-icons/react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PromptInput, PromptInputTextarea, PromptInputActions } from "@/components/ui/prompt-input";
 
@@ -70,7 +70,7 @@ export default function MessageInput({
             </label>
           )}
           <Button size="icon-sm" onClick={handleSubmit} disabled={cannotSend || !input.trim()}>
-            <ArrowUp size={16} weight="bold" />
+            <ArrowUpIcon size={16} weight="bold" />
           </Button>
         </div>
       </PromptInputActions>

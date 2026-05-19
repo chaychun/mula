@@ -1,6 +1,6 @@
 "use client";
 
-import { CaretDown, CaretRight, ArrowClockwise } from "@phosphor-icons/react";
+import { CaretDownIcon, CaretRightIcon, ArrowClockwiseIcon } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { ExerciseStatus } from "@/lib/types";
@@ -29,14 +29,14 @@ export default function ExerciseHeader({
       onClick={onToggle}
     >
       {isCollapsed ? (
-        <CaretRight className="size-4 shrink-0" />
+        <CaretRightIcon className="size-4 shrink-0" />
       ) : (
-        <CaretDown className="size-4 shrink-0" />
+        <CaretDownIcon className="size-4 shrink-0" />
       )}
       <span className="font-semibold text-sm flex-1 text-left">{title}</span>
       {isRetry && (
         <Badge variant="retry">
-          <ArrowClockwise className="w-3 h-3 mr-1" />
+          <ArrowClockwiseIcon className="w-3 h-3 mr-1" />
           Try again
         </Badge>
       )}

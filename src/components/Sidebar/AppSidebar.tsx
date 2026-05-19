@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Gear, MagnifyingGlass, Plus, X } from "@phosphor-icons/react";
+import { GearIcon, MagnifyingGlassIcon, PlusIcon, XIcon } from "@phosphor-icons/react";
 import type { Project, Session } from "@/lib/types";
 import { Sidebar, SidebarContent, SidebarFooter } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -97,7 +97,7 @@ export default function AppSidebar({
       <SidebarContent className={cn("relative", topPad)}>
         <div className="flex items-center gap-1.5 px-2">
           <div className="relative flex-1 h-7">
-            <MagnifyingGlass
+            <MagnifyingGlassIcon
               size={13}
               className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground/70 pointer-events-none"
             />
@@ -115,7 +115,7 @@ export default function AppSidebar({
                 className="absolute right-1.5 top-1/2 -translate-y-1/2 size-4 inline-flex items-center justify-center text-muted-foreground hover:text-foreground"
                 aria-label="Clear search"
               >
-                <X size={11} weight="bold" />
+                <XIcon size={11} weight="bold" />
               </button>
             )}
           </div>
@@ -151,7 +151,7 @@ export default function AppSidebar({
             onClick={onNewSession}
             className="flex-1 flex items-center gap-2 h-8 px-2 text-[12px] font-medium text-left transition-colors hover:bg-sidebar-accent/15 text-foreground"
           >
-            <Plus size={13} weight="bold" />
+            <PlusIcon size={13} weight="bold" />
             <span>New session</span>
           </button>
 
@@ -162,7 +162,7 @@ export default function AppSidebar({
             title={credConfigured ? "Settings" : "Set up Anthropic authentication"}
             className="relative shrink-0"
           >
-            <Gear size={16} weight={credConfigured ? "regular" : "fill"} />
+            <GearIcon size={16} weight={credConfigured ? "regular" : "fill"} />
             <span className="sr-only">Settings</span>
             {!credConfigured && <span className="absolute top-1 right-1 size-1.5 bg-destructive" />}
           </Button>

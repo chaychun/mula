@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle, ArrowCounterClockwise, XCircle, Lightbulb } from "@phosphor-icons/react";
+import { CheckCircleIcon, ArrowCounterClockwiseIcon, XCircleIcon, LightbulbIcon } from "@phosphor-icons/react";
 
 interface ExerciseUpdateBlockProps {
   status: string;
@@ -8,29 +8,29 @@ interface ExerciseUpdateBlockProps {
   exerciseTitle?: string;
 }
 
-const statusConfig: Record<string, { icon: typeof CheckCircle; label: string; color: string }> = {
+const statusConfig: Record<string, { icon: typeof CheckCircleIcon; label: string; color: string }> = {
   passed: {
-    icon: CheckCircle,
+    icon: CheckCircleIcon,
     label: "Passed",
     color: "text-green-600 dark:text-green-400",
   },
   passed_with_feedback: {
-    icon: CheckCircle,
+    icon: CheckCircleIcon,
     label: "Passed with feedback",
     color: "text-green-600 dark:text-green-400",
   },
   needs_retry: {
-    icon: ArrowCounterClockwise,
+    icon: ArrowCounterClockwiseIcon,
     label: "Try again",
     color: "text-yellow-600 dark:text-yellow-400",
   },
   failed: {
-    icon: XCircle,
+    icon: XCircleIcon,
     label: "Failed",
     color: "text-red-600 dark:text-red-400",
   },
   skipped: {
-    icon: XCircle,
+    icon: XCircleIcon,
     label: "Skipped",
     color: "text-muted-foreground",
   },
@@ -62,7 +62,7 @@ export default function ExerciseUpdateBlock({
       {/* Hint */}
       {hint && (
         <div className="px-4 py-2.5 bg-muted/50 border-t border-border flex items-start gap-2.5">
-          <Lightbulb size={16} weight="fill" className="shrink-0 text-yellow-500 mt-0.5" />
+          <LightbulbIcon size={16} weight="fill" className="shrink-0 text-yellow-500 mt-0.5" />
           <p className="text-sm text-muted-foreground">{hint}</p>
         </div>
       )}

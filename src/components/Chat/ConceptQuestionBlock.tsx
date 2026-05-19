@@ -1,7 +1,7 @@
 "use client";
 
 import type { ConceptQuestion } from "@/lib/types";
-import { CheckCircle, XCircle, WarningCircle } from "@phosphor-icons/react";
+import { CheckCircleIcon, XCircleIcon, WarningCircleIcon } from "@phosphor-icons/react";
 
 interface ConceptQuestionBlockProps {
   question: ConceptQuestion;
@@ -63,21 +63,21 @@ export default function ConceptQuestionBlock({
                   </span>
                   <span className="flex-1">{option.text}</span>
                   {isAnswered && isSelected && option.correctness === "correct" && (
-                    <CheckCircle
+                    <CheckCircleIcon
                       size={18}
                       weight="fill"
                       className="shrink-0 text-green-600 dark:text-green-400"
                     />
                   )}
                   {isAnswered && isSelected && option.correctness === "partial" && (
-                    <WarningCircle
+                    <WarningCircleIcon
                       size={18}
                       weight="fill"
                       className="shrink-0 text-yellow-600 dark:text-yellow-400"
                     />
                   )}
                   {isAnswered && isSelected && option.correctness === "incorrect" && (
-                    <XCircle
+                    <XCircleIcon
                       size={18}
                       weight="fill"
                       className="shrink-0 text-red-600 dark:text-red-400"

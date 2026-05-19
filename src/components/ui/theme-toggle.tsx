@@ -2,7 +2,7 @@
 
 import { useTheme } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
-import { Sun, Moon, Monitor } from "@phosphor-icons/react";
+import { SunIcon, MoonIcon, MonitorIcon } from "@phosphor-icons/react";
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
 import { cn } from "@/lib/utils";
 
@@ -14,13 +14,13 @@ export function ThemeToggle() {
       <MenuPrimitive.Trigger
         render={
           <Button variant="ghost" size="icon-sm" className="relative">
-            <Sun
+            <SunIcon
               className={cn(
                 "size-4 transition-all",
                 resolvedTheme === "dark" ? "scale-0 rotate-90" : "scale-100 rotate-0"
               )}
             />
-            <Moon
+            <MoonIcon
               className={cn(
                 "absolute size-4 transition-all",
                 resolvedTheme === "dark" ? "scale-100 rotate-0" : "scale-0 -rotate-90"
@@ -40,7 +40,7 @@ export function ThemeToggle() {
               )}
               onClick={() => setTheme("light")}
             >
-              <Sun className="size-4" />
+              <SunIcon className="size-4" />
               Light
             </MenuPrimitive.Item>
             <MenuPrimitive.Item
@@ -50,7 +50,7 @@ export function ThemeToggle() {
               )}
               onClick={() => setTheme("dark")}
             >
-              <Moon className="size-4" />
+              <MoonIcon className="size-4" />
               Dark
             </MenuPrimitive.Item>
             <MenuPrimitive.Item
@@ -60,7 +60,7 @@ export function ThemeToggle() {
               )}
               onClick={() => setTheme("system")}
             >
-              <Monitor className="size-4" />
+              <MonitorIcon className="size-4" />
               System
             </MenuPrimitive.Item>
           </MenuPrimitive.Popup>

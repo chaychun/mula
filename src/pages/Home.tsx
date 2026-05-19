@@ -9,7 +9,7 @@ import { SidebarInset } from "@/components/ui/sidebar";
 import { useProjects } from "@/hooks/useProjects";
 import { useSessions } from "@/hooks/useSessions";
 import { useCredentialStatus } from "@/hooks/useCredentialStatus";
-import { ShieldCheck, WarningCircle } from "@phosphor-icons/react";
+import { ShieldCheckIcon, WarningCircleIcon } from "@phosphor-icons/react";
 
 const LAST_PROJECT_KEY = "mula.lastProjectId";
 
@@ -38,10 +38,16 @@ export default function Home() {
     deleteSession,
     clearSessionsForProject,
   } = useSessions(null);
-  const { status: credStatus, loading: credLoading, tauriAvailable } = useCredentialStatus();
+  const {
+    status: credStatus,
+    loading: credLoading,
+    tauriAvailable,
+  } = useCredentialStatus();
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
+    null,
+  );
   const [draft, setDraft] = useState("");
   const [testingMode, setTestingMode] = useState(false);
   const hasAutoOpenedAuth = useRef(false);
@@ -50,7 +56,12 @@ export default function Home() {
   // First-launch: auto-open auth modal once if no credentials. Never re-fires
   // after the user dismisses it.
   useEffect(() => {
-    if (!credLoading && tauriAvailable && !credConfigured && !hasAutoOpenedAuth.current) {
+    if (
+      !credLoading &&
+      tauriAvailable &&
+      !credConfigured &&
+      !hasAutoOpenedAuth.current
+    ) {
       hasAutoOpenedAuth.current = true;
       setIsAuthOpen(true);
     }
@@ -69,7 +80,8 @@ export default function Home() {
 
   // Initialize selectedProjectId from localStorage or first project.
   useEffect(() => {
-    if (selectedProjectId && projects.some((p) => p.id === selectedProjectId)) return;
+    if (selectedProjectId && projects.some((p) => p.id === selectedProjectId))
+      return;
     const stored = localStorage.getItem(LAST_PROJECT_KEY);
     if (stored && projects.some((p) => p.id === stored)) {
       setSelectedProjectId(stored);
@@ -83,14 +95,14 @@ export default function Home() {
       persistSelectedProject(projectId);
       fetchSessions(projectId);
     },
-    [fetchSessions, persistSelectedProject]
+    [fetchSessions, persistSelectedProject],
   );
 
   const handleSelectSession = useCallback(
     (projectId: string, sessionId: string) => {
       navigate(`/projects/${projectId}/sessions/${sessionId}`);
     },
-    [navigate]
+    [navigate],
   );
 
   const handleCreateProject = useCallback(
@@ -98,7 +110,7 @@ export default function Home() {
       const project = await createProject(name);
       persistSelectedProject(project.id);
     },
-    [createProject, persistSelectedProject]
+    [createProject, persistSelectedProject],
   );
 
   const handleNewSession = useCallback(() => {
@@ -113,21 +125,21 @@ export default function Home() {
         state: { pendingMessage: message, testingMode },
       });
     },
-    [selectedProjectId, createSession, navigate, testingMode]
+    [selectedProjectId, createSession, navigate, testingMode],
   );
 
   const handleRenameProject = useCallback(
     async (projectId: string, newName: string) => {
       await updateProject(projectId, { name: newName });
     },
-    [updateProject]
+    [updateProject],
   );
 
   const handleRenameSession = useCallback(
     async (projectId: string, sessionId: string, newTitle: string) => {
       await updateSession(projectId, sessionId, { title: newTitle });
     },
-    [updateSession]
+    [updateSession],
   );
 
   const handleDeleteProject = useCallback(
@@ -136,14 +148,19 @@ export default function Home() {
       clearSessionsForProject(projectId);
       if (selectedProjectId === projectId) persistSelectedProject(null);
     },
-    [deleteProject, clearSessionsForProject, selectedProjectId, persistSelectedProject]
+    [
+      deleteProject,
+      clearSessionsForProject,
+      selectedProjectId,
+      persistSelectedProject,
+    ],
   );
 
   const handleDeleteSession = useCallback(
     async (projectId: string, sessionId: string) => {
       await deleteSession(projectId, sessionId);
     },
-    [deleteSession]
+    [deleteSession],
   );
 
   const noProjects = projects.length === 0 && !projectsLoading;
@@ -178,50 +195,51 @@ export default function Home() {
       <SidebarInset className="flex flex-col">
         <div className="flex-1 flex items-center justify-center">
           <div className="flex flex-col items-center w-full max-w-2xl px-6 gap-8">
-          <div className="flex flex-col items-center gap-2 text-center">
-            <h2 className="text-3xl font-bold tracking-tight">What would you like to learn?</h2>
-            <p className="text-sm text-muted-foreground">
-              Pick a topic or describe one. Your tutor will explain it, give you exercises, and
-              review your code.
-            </p>
-          </div>
+            <div className="flex flex-col items-center gap-2 text-center">
+              <h2 className="text-3xl font-bold tracking-tight">
+                What would you like to learn?
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Pick a topic or describe one. Your tutor will explain it, give
+                you exercises, and review your code.
+              </p>
+            </div>
 
-          <div className="w-full">
-            <MessageInput
-              onSend={handleSend}
-              disabled={typingDisabled}
-              submitDisabled={sendDisabled}
-              placeholder={placeholder}
-              value={draft}
-              onValueChange={setDraft}
-              testingMode={testingMode}
-              onTestingModeChange={setTestingMode}
-              leadingActions={
-                <ProjectSelector
-                  projects={projects}
-                  selectedProjectId={selectedProjectId}
-                  onSelect={persistSelectedProject}
-                  onCreateProject={() => setIsCreateProjectOpen(true)}
-                  disabled={projectsLoading}
-                />
-              }
-            />
-          </div>
-
-          <div className="w-full flex flex-wrap gap-2 justify-center">
-            {SUGGESTIONS.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setDraft(s)}
+            <div className="w-full">
+              <MessageInput
+                onSend={handleSend}
                 disabled={typingDisabled}
-                className="px-3 py-1.5 text-[12px] border border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {s}
-              </button>
-            ))}
-          </div>
+                submitDisabled={sendDisabled}
+                placeholder={placeholder}
+                value={draft}
+                onValueChange={setDraft}
+                testingMode={testingMode}
+                onTestingModeChange={setTestingMode}
+                leadingActions={
+                  <ProjectSelector
+                    projects={projects}
+                    selectedProjectId={selectedProjectId}
+                    onSelect={persistSelectedProject}
+                    onCreateProject={() => setIsCreateProjectOpen(true)}
+                    disabled={projectsLoading}
+                  />
+                }
+              />
+            </div>
 
+            <div className="w-full flex flex-wrap gap-2 justify-center">
+              {SUGGESTIONS.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setDraft(s)}
+                  disabled={typingDisabled}
+                  className="px-3 py-1.5 text-[12px] border border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -238,7 +256,7 @@ export default function Home() {
             >
               {credConfigured ? (
                 <>
-                  <ShieldCheck size={14} weight="duotone" />
+                  <ShieldCheckIcon size={14} weight="duotone" />
                   Connected via{" "}
                   {credStatus.active_kind === "local_cli"
                     ? "local Claude Code"
@@ -246,7 +264,7 @@ export default function Home() {
                 </>
               ) : (
                 <>
-                  <WarningCircle size={14} weight="fill" />
+                  <WarningCircleIcon size={14} weight="fill" />
                   No Anthropic credentials — click to sign in
                 </>
               )}
@@ -264,7 +282,10 @@ export default function Home() {
         }}
       />
 
-      <AuthSettingsModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
+      <AuthSettingsModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+      />
     </>
   );
 }

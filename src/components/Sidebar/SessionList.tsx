@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
-import { WarningCircle } from "@phosphor-icons/react";
+import { WarningCircleIcon } from "@phosphor-icons/react";
 import type { Project, Session } from "@/lib/types";
 import {
   ContextMenu,
@@ -20,7 +20,11 @@ interface SessionListProps {
   currentSessionId: string | null;
   searchQuery: string;
   onSelectSession: (projectId: string, sessionId: string) => void;
-  onRenameSession?: (projectId: string, sessionId: string, newTitle: string) => void;
+  onRenameSession?: (
+    projectId: string,
+    sessionId: string,
+    newTitle: string,
+  ) => void;
   onDeleteSession?: (session: Session) => void;
 }
 
@@ -34,12 +38,22 @@ const BUCKET_LABELS: Record<BucketKey, string> = {
   earlier: "Earlier",
 };
 
-const BUCKET_ORDER: BucketKey[] = ["today", "yesterday", "thisWeek", "thisMonth", "earlier"];
+const BUCKET_ORDER: BucketKey[] = [
+  "today",
+  "yesterday",
+  "thisWeek",
+  "thisMonth",
+  "earlier",
+];
 
 function dateBucket(iso: string): BucketKey {
   const d = new Date(iso);
   const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  );
   const startOfYesterday = new Date(startOfToday);
   startOfYesterday.setDate(startOfYesterday.getDate() - 1);
   const startOfWeek = new Date(startOfToday);
@@ -68,7 +82,7 @@ export default function SessionList({
 
   const projectName = useCallback(
     (id: string) => projects.find((p) => p.id === id)?.name ?? "",
-    [projects]
+    [projects],
   );
 
   const grouped = useMemo(() => {
@@ -98,17 +112,22 @@ export default function SessionList({
       if (session) onRenameSession?.(session.projectId, editingId, newValue);
       setEditingId(null);
     },
-    [editingId, sessions, onRenameSession]
+    [editingId, sessions, onRenameSession],
   );
 
-  const totalShown = BUCKET_ORDER.reduce((sum, k) => sum + grouped[k].length, 0);
+  const totalShown = BUCKET_ORDER.reduce(
+    (sum, k) => sum + grouped[k].length,
+    0,
+  );
   const errorEntries = Object.entries(sessionErrorByProject ?? {});
 
   if (totalShown === 0) {
     return (
       <div className="px-3 py-8">
         {searchQuery ? (
-          <p className="text-xs text-muted-foreground">No sessions match "{searchQuery}".</p>
+          <p className="text-xs text-muted-foreground">
+            No sessions match "{searchQuery}".
+          </p>
         ) : activeProjectId ? (
           <p className="text-xs text-muted-foreground">
             No sessions in {projectName(activeProjectId)} yet.
@@ -131,7 +150,11 @@ export default function SessionList({
               key={pid}
               className="flex items-start gap-2 text-[11px] text-destructive leading-tight"
             >
-              <WarningCircle size={12} weight="fill" className="mt-0.5 shrink-0" />
+              <WarningCircleIcon
+                size={12}
+                weight="fill"
+                className="mt-0.5 shrink-0"
+              />
               <span className="truncate">
                 Couldn't load {projectName(pid) || "project"} sessions ({err})
               </span>
@@ -162,7 +185,7 @@ export default function SessionList({
                     {isSelected && (
                       <span
                         aria-hidden
-                        className="absolute left-0 top-0 bottom-0 w-[2px] bg-primary"
+                        className="absolute left-0 top-0 bottom-0 w-0.5 bg-primary"
                       />
                     )}
                     {isEditing ? (
@@ -180,31 +203,42 @@ export default function SessionList({
                         <ContextMenuTrigger>
                           <button
                             type="button"
-                            onClick={() => onSelectSession(session.projectId, session.id)}
+                            onClick={() =>
+                              onSelectSession(session.projectId, session.id)
+                            }
                             className={cn(
                               "w-full text-left flex flex-col gap-0.5 px-3 py-1.5 transition-colors",
-                              isSelected ? "bg-muted/60" : "hover:bg-muted/30"
+                              isSelected ? "bg-muted/60" : "hover:bg-muted/30",
                             )}
                           >
                             <span
                               className={cn(
                                 "text-[13px] leading-tight truncate",
-                                isSelected ? "font-semibold text-foreground" : "font-medium"
+                                isSelected
+                                  ? "font-semibold text-foreground"
+                                  : "font-medium",
                               )}
                             >
                               {session.title || "Untitled session"}
                             </span>
                             <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                              <span className="truncate">{projectName(session.projectId)}</span>
-                              <span className="text-muted-foreground/40">·</span>
+                              <span className="truncate">
+                                {projectName(session.projectId)}
+                              </span>
+                              <span className="text-muted-foreground/40">
+                                ·
+                              </span>
                               <span className="tabular-nums shrink-0">
-                                {exCount} {exCount === 1 ? "exercise" : "exercises"}
+                                {exCount}{" "}
+                                {exCount === 1 ? "exercise" : "exercises"}
                               </span>
                             </span>
                           </button>
                         </ContextMenuTrigger>
                         <ContextMenuContent>
-                          <ContextMenuItem onClick={() => setEditingId(session.id)}>
+                          <ContextMenuItem
+                            onClick={() => setEditingId(session.id)}
+                          >
                             Rename
                           </ContextMenuItem>
                           {onDeleteSession && (

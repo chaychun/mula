@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import type { ToolCall } from "@/lib/types";
 import { Button, Spinner, ScrollArea } from "@/components/ui";
-import { CaretDown, CaretRight, Check, X } from "@phosphor-icons/react";
+import { CaretDownIcon, CaretRightIcon, CheckIcon, XIcon } from "@phosphor-icons/react";
 
 interface ToolProps {
   toolCall: ToolCall;
@@ -30,13 +30,13 @@ function Tool({ toolCall }: ToolProps) {
     if (toolCall.status === "completed") {
       return (
         <span className="animate-in fade-in zoom-in-50 duration-200">
-          <Check size={14} weight="bold" className="text-primary" />
+          <CheckIcon size={14} weight="bold" className="text-primary" />
         </span>
       );
     }
     return (
       <span className="animate-in fade-in zoom-in-50 duration-200">
-        <X size={14} weight="bold" className="text-destructive" />
+        <XIcon size={14} weight="bold" className="text-destructive" />
       </span>
     );
   };
@@ -48,7 +48,7 @@ function Tool({ toolCall }: ToolProps) {
         className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-muted/50 transition-colors text-left"
       >
         <span className="text-muted-foreground">
-          {isExpanded ? <CaretDown size={12} /> : <CaretRight size={12} />}
+          {isExpanded ? <CaretDownIcon size={12} /> : <CaretRightIcon size={12} />}
         </span>
         <span className="font-mono text-xs flex-1 truncate">{displayName}</span>
         {renderStatusIcon()}

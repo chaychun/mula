@@ -7,13 +7,13 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Check,
-  Prohibit,
-  Clock,
-  CaretDown,
-  CaretUp,
-  ArrowClockwise,
-  X,
+  CheckIcon,
+  ProhibitIcon,
+  ClockIcon,
+  CaretDownIcon,
+  CaretUpIcon,
+  ArrowClockwiseIcon,
+  XIcon,
 } from "@phosphor-icons/react";
 
 interface ExerciseSubmissionCardProps {
@@ -65,7 +65,7 @@ export function ExerciseSubmissionCard({
     if (!displayStatus) {
       return (
         <Badge variant="pending">
-          <Clock className="w-3 h-3 mr-1" />
+          <ClockIcon className="w-3 h-3 mr-1" />
           Pending
         </Badge>
       );
@@ -75,14 +75,14 @@ export function ExerciseSubmissionCard({
       case "passed":
         return (
           <Badge variant="success">
-            <Check className="w-3 h-3 mr-1" />
+            <CheckIcon className="w-3 h-3 mr-1" />
             Passed
           </Badge>
         );
       case "skipped":
         return (
           <Badge variant="muted">
-            <Prohibit className="w-3 h-3 mr-1" />
+            <ProhibitIcon className="w-3 h-3 mr-1" />
             Skipped
           </Badge>
         );
@@ -90,28 +90,28 @@ export function ExerciseSubmissionCard({
       case "pending_review":
         return (
           <Badge variant="warning">
-            <Clock className="w-3 h-3 mr-1" />
+            <ClockIcon className="w-3 h-3 mr-1" />
             Pending
           </Badge>
         );
       case "needs_retry":
         return (
           <Badge variant="retry">
-            <ArrowClockwise className="w-3 h-3 mr-1" />
+            <ArrowClockwiseIcon className="w-3 h-3 mr-1" />
             Needs Retry
           </Badge>
         );
       case "failed":
         return (
           <Badge variant="error">
-            <X className="w-3 h-3 mr-1" />
+            <XIcon className="w-3 h-3 mr-1" />
             Failed
           </Badge>
         );
       case "passed_with_feedback":
         return (
           <Badge variant="feedback">
-            <Check className="w-3 h-3 mr-1" />
+            <CheckIcon className="w-3 h-3 mr-1" />
             Passed with feedback
           </Badge>
         );
@@ -147,7 +147,7 @@ export function ExerciseSubmissionCard({
                 size="sm"
                 onClick={() => onRetry(submission.exerciseId, submission.code)}
               >
-                <ArrowClockwise className="w-3 h-3 mr-1" />
+                <ArrowClockwiseIcon className="w-3 h-3 mr-1" />
                 Retry
               </Button>
             )}
@@ -183,12 +183,12 @@ export function ExerciseSubmissionCard({
                 >
                   {isExpanded ? (
                     <>
-                      <CaretUp className="w-3 h-3 mr-1" />
+                      <CaretUpIcon className="w-3 h-3 mr-1" />
                       Show less
                     </>
                   ) : (
                     <>
-                      <CaretDown className="w-3 h-3 mr-1" />
+                      <CaretDownIcon className="w-3 h-3 mr-1" />
                       Show more ({codeLines.length - 10} more lines)
                     </>
                   )}

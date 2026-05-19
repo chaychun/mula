@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
-import { Plus } from "@phosphor-icons/react";
+import { PlusIcon } from "@phosphor-icons/react";
 import type { Project } from "@/lib/types";
 import {
   ContextMenu,
@@ -36,14 +36,17 @@ export default function ProjectChips({
 }: ProjectChipsProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const totalCount = useMemo(() => Object.values(counts).reduce((sum, n) => sum + n, 0), [counts]);
+  const totalCount = useMemo(
+    () => Object.values(counts).reduce((sum, n) => sum + n, 0),
+    [counts],
+  );
 
   const handleSave = useCallback(
     (newValue: string) => {
       if (editingId) onRename?.(editingId, newValue);
       setEditingId(null);
     },
-    [editingId, onRename]
+    [editingId, onRename],
   );
 
   return (
@@ -62,7 +65,10 @@ export default function ProjectChips({
 
         if (isEditing) {
           return (
-            <div key={project.id} className={cn(CHIP_BASE, "bg-sidebar-accent/25 normal-case")}>
+            <div
+              key={project.id}
+              className={cn(CHIP_BASE, "bg-sidebar-accent/25 normal-case")}
+            >
               <InlineEdit
                 value={project.name}
                 isEditing
@@ -87,9 +93,14 @@ export default function ProjectChips({
               }
             />
             <ContextMenuContent>
-              <ContextMenuItem onClick={() => setEditingId(project.id)}>Rename</ContextMenuItem>
+              <ContextMenuItem onClick={() => setEditingId(project.id)}>
+                Rename
+              </ContextMenuItem>
               {onDelete && (
-                <ContextMenuItem variant="destructive" onClick={() => onDelete(project)}>
+                <ContextMenuItem
+                  variant="destructive"
+                  onClick={() => onDelete(project)}
+                >
                   Delete
                 </ContextMenuItem>
               )}
@@ -105,10 +116,10 @@ export default function ProjectChips({
         aria-label="New project"
         className={cn(
           CHIP_BASE,
-          "text-muted-foreground/60 hover:text-foreground hover:bg-sidebar-accent/15"
+          "text-muted-foreground/60 hover:text-foreground hover:bg-sidebar-accent/15",
         )}
       >
-        <Plus size={11} weight="bold" />
+        <PlusIcon size={11} weight="bold" />
       </button>
     </div>
   );
@@ -137,14 +148,14 @@ function Chip({
         active
           ? "bg-foreground text-background"
           : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/15",
-        className
+        className,
       )}
     >
-      <span className="block truncate max-w-[120px]">{label}</span>
+      <span className="block truncate max-w-30">{label}</span>
       <span
         className={cn(
           "ml-1.5 tabular-nums normal-case",
-          active ? "text-background/60" : "text-muted-foreground/50"
+          active ? "text-background/60" : "text-muted-foreground/50",
         )}
       >
         {count}

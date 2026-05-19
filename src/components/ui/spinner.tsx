@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Spinner as PhosphorSpinner } from "@phosphor-icons/react";
+import { SpinnerIcon as PhosphorSpinner } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 
 interface SpinnerProps extends React.HTMLAttributes<SVGSVGElement> {

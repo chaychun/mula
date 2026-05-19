@@ -1,26 +1,40 @@
 "use client";
 
-import type { Message, Exercise, ToolCall, ContentBlock, ConceptQuestion } from "@/lib/types";
+import type {
+  Message,
+  Exercise,
+  ToolCall,
+  ContentBlock,
+  ConceptQuestion,
+} from "@/lib/types";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
 import ExercisePanel from "@/components/Exercise/ExercisePanel";
-import { ChatContainerRoot, ChatContainerContent } from "@/components/ui/chat-container";
+import {
+  ChatContainerRoot,
+  ChatContainerContent,
+} from "@/components/ui/chat-container";
 import { ScrollButton } from "@/components/ui/scroll-button";
-import { GraduationCap, Code, Lightning, BookOpen } from "@phosphor-icons/react";
+import {
+  GraduationCapIcon,
+  CodeIcon,
+  LightningIcon,
+  BookOpenIcon,
+} from "@phosphor-icons/react";
 
 const suggestions = [
   {
-    icon: Code,
+    icon: CodeIcon,
     title: "Python basics",
     description: "Variables, loops, and functions",
   },
   {
-    icon: Lightning,
+    icon: LightningIcon,
     title: "JavaScript fundamentals",
     description: "DOM, events, and async",
   },
   {
-    icon: BookOpen,
+    icon: BookOpenIcon,
     title: "Data structures",
     description: "Arrays, linked lists, and trees",
   },
@@ -43,14 +57,16 @@ function EmptyState({
         {/* Icon + Text */}
         <div className="flex flex-col items-center gap-4">
           <div className="p-3.5 bg-primary/10 text-primary">
-            <GraduationCap size={36} weight="duotone" />
+            <GraduationCapIcon size={36} weight="duotone" />
           </div>
 
           <div className="text-center space-y-2">
-            <h2 className="text-xl font-semibold text-foreground">What do you want to learn?</h2>
+            <h2 className="text-xl font-semibold text-foreground">
+              What do you want to learn?
+            </h2>
             <p className="text-muted-foreground max-w-sm mx-auto">
-              Describe what you&apos;re trying to learn. I&apos;ll teach the concepts and give you
-              hands-on exercises.
+              Describe what you&apos;re trying to learn. I&apos;ll teach the
+              concepts and give you hands-on exercises.
             </p>
           </div>
         </div>
@@ -69,8 +85,10 @@ function EmptyState({
           {suggestions.map((suggestion) => (
             <button
               key={suggestion.title}
-              onClick={() => onSuggestionClick(`Teach me ${suggestion.title.toLowerCase()}`)}
-              className="flex items-start gap-3 flex-1 min-w-[160px] px-3.5 py-3 text-left border border-border bg-card hover:bg-muted hover:border-muted-foreground/20 transition-colors"
+              onClick={() =>
+                onSuggestionClick(`Teach me ${suggestion.title.toLowerCase()}`)
+              }
+              className="flex items-start gap-3 flex-1 min-w-40 px-3.5 py-3 text-left border border-border bg-card hover:bg-muted hover:border-muted-foreground/20 transition-colors"
             >
               <suggestion.icon
                 size={18}
@@ -78,8 +96,12 @@ function EmptyState({
                 className="text-primary mt-0.5 shrink-0"
               />
               <div>
-                <div className="text-sm font-medium text-foreground">{suggestion.title}</div>
-                <div className="text-xs text-muted-foreground">{suggestion.description}</div>
+                <div className="text-sm font-medium text-foreground">
+                  {suggestion.title}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {suggestion.description}
+                </div>
               </div>
             </button>
           ))}
@@ -100,7 +122,10 @@ interface ChatProps {
   failedMessageIds?: Set<string>;
   onSendMessage: (message: string) => void;
   activeExercise?: Exercise | null;
-  onExerciseSubmit?: (code: string, blankValues?: Record<string, string>) => void;
+  onExerciseSubmit?: (
+    code: string,
+    blankValues?: Record<string, string>,
+  ) => void;
   onExerciseSkip?: () => void;
   onExerciseReset?: () => void;
   onExerciseRetry?: (exerciseId: string, code: string) => void;
@@ -131,7 +156,9 @@ export default function Chat({
   className = "",
 }: ChatProps) {
   const isEmptyState =
-    messages.length === 0 && !streamingContent && streamingToolCalls.length === 0;
+    messages.length === 0 &&
+    !streamingContent &&
+    streamingToolCalls.length === 0;
 
   return (
     <div className={`flex flex-col h-full overflow-hidden ${className}`}>
@@ -165,7 +192,10 @@ export default function Chat({
           </ChatContainerContent>
           <div className="absolute bottom-4 left-0 right-0 pointer-events-none px-4">
             <div className="w-full max-w-3xl mx-auto flex justify-end">
-              <ScrollButton variant="solid" className="pointer-events-auto shadow-md" />
+              <ScrollButton
+                variant="solid"
+                className="pointer-events-auto shadow-md"
+              />
             </div>
           </div>
         </ChatContainerRoot>

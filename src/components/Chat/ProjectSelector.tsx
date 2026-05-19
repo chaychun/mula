@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CaretDown, Plus } from "@phosphor-icons/react";
+import { CaretDownIcon, PlusIcon } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import type { Project } from "@/lib/types";
 
@@ -49,7 +49,7 @@ export default function ProjectSelector({
         )}
       >
         <span className="truncate max-w-45">{label}</span>
-        <CaretDown size={10} weight="bold" className="text-muted-foreground" />
+        <CaretDownIcon size={10} weight="bold" className="text-muted-foreground" />
       </button>
       {open && (
         <div className="absolute bottom-full left-0 mb-1 z-30 min-w-50 border border-border bg-popover shadow-md">
@@ -79,7 +79,7 @@ export default function ProjectSelector({
               }}
               className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-[12px] text-foreground transition-colors hover:bg-muted"
             >
-              <Plus size={12} weight="bold" />
+              <PlusIcon size={12} weight="bold" />
               New project
             </button>
           </div>

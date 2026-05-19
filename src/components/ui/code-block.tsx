@@ -4,8 +4,12 @@ import { cn } from "@/lib/utils";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { codeToHtml } from "shiki";
 import { useTheme } from "@/components/theme-provider";
-import { Copy, Check } from "@phosphor-icons/react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { CopyIcon, CheckIcon } from "@phosphor-icons/react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { motion, AnimatePresence } from "motion/react";
 
 export type CodeBlockProps = {
@@ -18,7 +22,7 @@ function CodeBlock({ children, className, ...props }: CodeBlockProps) {
     <div
       className={cn(
         "not-prose flex w-full flex-col overflow-clip ring-1 ring-border bg-card text-card-foreground",
-        className
+        className,
       )}
       {...props}
     >
@@ -60,7 +64,7 @@ function CopyButton({ code, className }: { code: string; className?: string }) {
         onClick={handleCopy}
         className={cn(
           "relative inline-flex items-center justify-center size-6 text-muted-foreground hover:text-foreground cursor-pointer",
-          className
+          className,
         )}
         aria-label={copied ? "Copied" : "Copy code"}
       >
@@ -76,7 +80,7 @@ function CopyButton({ code, className }: { code: string; className?: string }) {
                 transition={ICON_TRANSITION}
                 className="absolute inset-0 flex items-center justify-center text-emerald-500"
               >
-                <Check className="size-3.5" />
+                <CheckIcon className="size-3.5" />
               </motion.span>
             ) : (
               <motion.span
@@ -88,7 +92,7 @@ function CopyButton({ code, className }: { code: string; className?: string }) {
                 transition={ICON_TRANSITION}
                 className="absolute inset-0 flex items-center justify-center"
               >
-                <Copy className="size-3.5" />
+                <CopyIcon className="size-3.5" />
               </motion.span>
             )}
           </AnimatePresence>
@@ -99,9 +103,15 @@ function CopyButton({ code, className }: { code: string; className?: string }) {
   );
 }
 
-function CopyTooltipContent({ copied, label }: { copied: boolean; label: string }) {
+function CopyTooltipContent({
+  copied,
+  label,
+}: {
+  copied: boolean;
+  label: string;
+}) {
   return (
-    <TooltipContent sideOffset={6} className="!px-0 !py-0">
+    <TooltipContent sideOffset={6} className="px-0! py-0!">
       <AnimatePresence mode="popLayout" initial={false}>
         <motion.div
           key={copied ? "copied" : "copy"}
@@ -112,7 +122,9 @@ function CopyTooltipContent({ copied, label }: { copied: boolean; label: string 
           exit={{ opacity: 0, filter: "blur(8px)" }}
           transition={{ duration: 0.15, ease: "easeOut" }}
         >
-          <span className="block whitespace-nowrap">{copied ? "Copied!" : label}</span>
+          <span className="block whitespace-nowrap">
+            {copied ? "Copied!" : label}
+          </span>
         </motion.div>
       </AnimatePresence>
     </TooltipContent>
@@ -125,12 +137,17 @@ export type CodeBlockHeaderProps = {
   className?: string;
 } & Omit<React.HTMLProps<HTMLDivElement>, "code">;
 
-function CodeBlockHeader({ language, code, className, ...props }: CodeBlockHeaderProps) {
+function CodeBlockHeader({
+  language,
+  code,
+  className,
+  ...props
+}: CodeBlockHeaderProps) {
   return (
     <div
       className={cn(
         "flex items-center justify-between bg-muted/80 text-muted-foreground text-[10px] font-medium uppercase tracking-wider px-3 py-1.5 border-b border-border",
-        className
+        className,
       )}
       {...props}
     >
@@ -147,9 +164,16 @@ export type CodeBlockCodeProps = {
   className?: string;
 } & React.HTMLProps<HTMLDivElement>;
 
-function CodeBlockCode({ code, language = "tsx", theme, className, ...props }: CodeBlockCodeProps) {
+function CodeBlockCode({
+  code,
+  language = "tsx",
+  theme,
+  className,
+  ...props
+}: CodeBlockCodeProps) {
   const { resolvedTheme } = useTheme();
-  const resolvedShikiTheme = theme ?? (resolvedTheme === "dark" ? "github-dark" : "github-light");
+  const resolvedShikiTheme =
+    theme ?? (resolvedTheme === "dark" ? "github-dark" : "github-light");
 
   const [highlightedHtml, setHighlightedHtml] = useState<string | null>(null);
 
@@ -160,7 +184,10 @@ function CodeBlockCode({ code, language = "tsx", theme, className, ...props }: C
         return;
       }
 
-      const html = await codeToHtml(code, { lang: language, theme: resolvedShikiTheme });
+      const html = await codeToHtml(code, {
+        lang: language,
+        theme: resolvedShikiTheme,
+      });
       setHighlightedHtml(html);
     }
     highlight();
@@ -168,11 +195,15 @@ function CodeBlockCode({ code, language = "tsx", theme, className, ...props }: C
 
   const classNames = cn(
     "w-full overflow-x-auto text-xs leading-relaxed [&>pre]:px-4 [&>pre]:py-4 [&_pre]:!bg-transparent",
-    className
+    className,
   );
 
   return highlightedHtml ? (
-    <div className={classNames} dangerouslySetInnerHTML={{ __html: highlightedHtml }} {...props} />
+    <div
+      className={classNames}
+      dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+      {...props}
+    />
   ) : (
     <div className={classNames} {...props}>
       <pre>
@@ -184,9 +215,16 @@ function CodeBlockCode({ code, language = "tsx", theme, className, ...props }: C
 
 export type CodeBlockGroupProps = React.HTMLAttributes<HTMLDivElement>;
 
-function CodeBlockGroup({ children, className, ...props }: CodeBlockGroupProps) {
+function CodeBlockGroup({
+  children,
+  className,
+  ...props
+}: CodeBlockGroupProps) {
   return (
-    <div className={cn("flex items-center justify-between", className)} {...props}>
+    <div
+      className={cn("flex items-center justify-between", className)}
+      {...props}
+    >
       {children}
     </div>
   );
@@ -225,4 +263,11 @@ function InlineCode({ children }: { children: React.ReactNode }) {
   );
 }
 
-export { CodeBlockGroup, CodeBlockCode, CodeBlockHeader, CodeBlock, CopyButton, InlineCode };
+export {
+  CodeBlockGroup,
+  CodeBlockCode,
+  CodeBlockHeader,
+  CodeBlock,
+  CopyButton,
+  InlineCode,
+};

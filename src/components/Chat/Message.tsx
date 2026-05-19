@@ -1,6 +1,6 @@
 "use client";
 
-import { WarningCircle } from "@phosphor-icons/react";
+import { WarningCircleIcon } from "@phosphor-icons/react";
 import type { Message, Exercise, ToolCall, ConceptQuestion } from "@/lib/types";
 import { Markdown } from "@/components/ui/markdown";
 import { Tool } from "@/components/ui/tool";
@@ -22,7 +22,7 @@ function PersistFailedBadge() {
           />
         }
       >
-        <WarningCircle size={16} weight="fill" />
+        <WarningCircleIcon size={16} weight="fill" />
       </TooltipTrigger>
       <TooltipContent>Not saved. Send another message to retry.</TooltipContent>
     </Tooltip>
