@@ -6,6 +6,7 @@ import type { Project, Session } from "@/lib/types";
 import { Sidebar, SidebarContent, SidebarFooter } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import AuthSettingsModal from "@/components/Auth/AuthSettingsModal";
 import { useCredentialStatus } from "@/hooks/useCredentialStatus";
 import { useIsTauri } from "@/hooks/use-tauri";
@@ -28,6 +29,8 @@ interface AppSidebarProps {
   onCreateSession: (projectId: string) => void;
   onRenameProject?: (projectId: string, newName: string) => void;
   onRenameSession?: (projectId: string, sessionId: string, newTitle: string) => void;
+  onDeleteProject?: (projectId: string) => Promise<void> | void;
+  onDeleteSession?: (projectId: string, sessionId: string) => Promise<void> | void;
 }
 
 export default function AppSidebar({
@@ -42,12 +45,16 @@ export default function AppSidebar({
   onCreateSession,
   onRenameProject,
   onRenameSession,
+  onDeleteProject,
+  onDeleteSession,
 }: AppSidebarProps) {
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [isPickProjectOpen, setIsPickProjectOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(currentProjectId);
   const [searchQuery, setSearchQuery] = useState("");
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [sessionToDelete, setSessionToDelete] = useState<Session | null>(null);
   const { status: credStatus } = useCredentialStatus();
   const credConfigured = credStatus.active_kind !== null;
   const isTauri = useIsTauri();
@@ -58,6 +65,14 @@ export default function AppSidebar({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentProjectId]);
+
+  // If the active project filter points at a deleted/missing project, fall
+  // back to "All" so the session list stays usable.
+  useEffect(() => {
+    if (activeProjectId && !projects.some((p) => p.id === activeProjectId)) {
+      setActiveProjectId(null);
+    }
+  }, [projects, activeProjectId]);
 
   const sessionCountByProject = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -131,6 +146,7 @@ export default function AppSidebar({
           onSelect={handleSelectChip}
           onCreate={() => setIsCreateProjectOpen(true)}
           onRename={onRenameProject}
+          onDelete={onDeleteProject ? setProjectToDelete : undefined}
         />
 
         <SessionList
@@ -142,6 +158,7 @@ export default function AppSidebar({
           searchQuery={searchQuery}
           onSelectSession={onSelectSession}
           onRenameSession={onRenameSession}
+          onDeleteSession={onDeleteSession ? setSessionToDelete : undefined}
         />
       </SidebarContent>
 
@@ -185,6 +202,38 @@ export default function AppSidebar({
       />
 
       <AuthSettingsModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
+
+      <ConfirmDialog
+        isOpen={projectToDelete !== null}
+        title={`Delete "${projectToDelete?.name ?? ""}"?`}
+        description={
+          <>
+            This permanently deletes the project and all{" "}
+            <strong>{projectToDelete ? (sessionCountByProject[projectToDelete.id] ?? 0) : 0}</strong>{" "}
+            session(s) inside it, including messages and exercises. This cannot be undone.
+          </>
+        }
+        confirmLabel="Delete project"
+        onConfirm={async () => {
+          if (projectToDelete && onDeleteProject) {
+            await onDeleteProject(projectToDelete.id);
+          }
+        }}
+        onClose={() => setProjectToDelete(null)}
+      />
+
+      <ConfirmDialog
+        isOpen={sessionToDelete !== null}
+        title={`Delete "${sessionToDelete?.title || "Untitled session"}"?`}
+        description="This permanently deletes the session, its messages, and exercises. This cannot be undone."
+        confirmLabel="Delete session"
+        onConfirm={async () => {
+          if (sessionToDelete && onDeleteSession) {
+            await onDeleteSession(sessionToDelete.projectId, sessionToDelete.id);
+          }
+        }}
+        onClose={() => setSessionToDelete(null)}
+      />
     </Sidebar>
   );
 }

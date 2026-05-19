@@ -1,4 +1,5 @@
 export { InlineEdit } from "./InlineEdit";
+export { ConfirmDialog } from "./ConfirmDialog";
 export { Button, buttonVariants } from "./button";
 export { Input } from "./input";
 export { Label } from "./label";

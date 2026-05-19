@@ -127,6 +127,16 @@ router.patch("/api/projects/:projectId/sessions/:sessionId", async (req, res) =>
   }
 });
 
+router.delete("/api/projects/:projectId/sessions/:sessionId", async (req, res) => {
+  try {
+    await storage.deleteSession(req.params.projectId, req.params.sessionId);
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Failed to delete session:", error);
+    res.status(500).json({ error: "Failed to delete session" });
+  }
+});
+
 // ──────────────────────────────────────────────
 // Exercise Attempts / Retry / Skip
 // ──────────────────────────────────────────────

@@ -21,6 +21,7 @@ interface SessionListProps {
   searchQuery: string;
   onSelectSession: (projectId: string, sessionId: string) => void;
   onRenameSession?: (projectId: string, sessionId: string, newTitle: string) => void;
+  onDeleteSession?: (session: Session) => void;
 }
 
 type BucketKey = "today" | "yesterday" | "thisWeek" | "thisMonth" | "earlier";
@@ -61,6 +62,7 @@ export default function SessionList({
   searchQuery,
   onSelectSession,
   onRenameSession,
+  onDeleteSession,
 }: SessionListProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -205,6 +207,14 @@ export default function SessionList({
                           <ContextMenuItem onClick={() => setEditingId(session.id)}>
                             Rename
                           </ContextMenuItem>
+                          {onDeleteSession && (
+                            <ContextMenuItem
+                              variant="destructive"
+                              onClick={() => onDeleteSession(session)}
+                            >
+                              Delete
+                            </ContextMenuItem>
+                          )}
                         </ContextMenuContent>
                       </ContextMenu>
                     )}

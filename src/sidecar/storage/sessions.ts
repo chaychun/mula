@@ -147,6 +147,14 @@ export async function setAgentSessionId(
   await updateSession(projectId, sessionId, { agentSessionId });
 }
 
+export async function deleteSession(projectId: string, sessionId: string): Promise<boolean> {
+  const db = getDb();
+  const result = db
+    .prepare("DELETE FROM sessions WHERE id = ? AND project_id = ?")
+    .run(sessionId, projectId);
+  return result.changes > 0;
+}
+
 export async function listSessions(projectId: string): Promise<Session[]> {
   const db = getDb();
   const rows = db

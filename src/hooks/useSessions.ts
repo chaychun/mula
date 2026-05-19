@@ -100,6 +100,26 @@ export function useSessions(_projectId: string | null) {
     [currentSession?.id]
   );
 
+  // Delete a session
+  const deleteSession = useCallback(
+    async (pid: string, sessionId: string) => {
+      try {
+        const response = await sidecarFetch(`/api/projects/${pid}/sessions/${sessionId}`, {
+          method: "DELETE",
+        });
+        if (!response.ok) throw new Error("Failed to delete session");
+        setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+        if (currentSession?.id === sessionId) {
+          setCurrentSession(null);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Unknown error");
+        throw err;
+      }
+    },
+    [currentSession?.id]
+  );
+
   // Update session title in local state only (used after async title generation)
   const updateSessionTitleLocal = useCallback(
     (sessionId: string, title: string) => {
@@ -134,6 +154,7 @@ export function useSessions(_projectId: string | null) {
     fetchSession,
     createSession,
     updateSession,
+    deleteSession,
     updateSessionTitleLocal,
     selectSession,
     clearSession,

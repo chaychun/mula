@@ -12,8 +12,15 @@ import { GraduationCap, Plus, ShieldCheck, WarningCircle } from "@phosphor-icons
 
 export default function Home() {
   const navigate = useNavigate();
-  const { projects, loading: projectsLoading, createProject, updateProject } = useProjects();
-  const { sessions, createSession, fetchSessions, updateSession } = useSessions(null);
+  const {
+    projects,
+    loading: projectsLoading,
+    createProject,
+    updateProject,
+    deleteProject,
+  } = useProjects();
+  const { sessions, createSession, fetchSessions, updateSession, deleteSession } =
+    useSessions(null);
   const { status: credStatus, loading: credLoading, tauriAvailable } = useCredentialStatus();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
@@ -74,6 +81,20 @@ export default function Home() {
     [updateSession]
   );
 
+  const handleDeleteProject = useCallback(
+    async (projectId: string) => {
+      await deleteProject(projectId);
+    },
+    [deleteProject]
+  );
+
+  const handleDeleteSession = useCallback(
+    async (projectId: string, sessionId: string) => {
+      await deleteSession(projectId, sessionId);
+    },
+    [deleteSession]
+  );
+
   return (
     <>
       {/* Sidebar */}
@@ -89,6 +110,8 @@ export default function Home() {
         onCreateSession={handleCreateSession}
         onRenameProject={handleRenameProject}
         onRenameSession={handleRenameSession}
+        onDeleteProject={handleDeleteProject}
+        onDeleteSession={handleDeleteSession}
       />
 
       {/* Welcome Screen */}

@@ -18,7 +18,7 @@ export default function SessionPage() {
   }
 
   // Project and session state
-  const { projects, createProject, updateProject } = useProjects();
+  const { projects, createProject, updateProject, deleteProject } = useProjects();
   const [agentSessionId, setAgentSessionId] = useState<string | undefined>();
   const [testingMode, setTestingMode] = useState(false);
 
@@ -31,6 +31,7 @@ export default function SessionPage() {
     createSession,
     selectSession,
     updateSession,
+    deleteSession,
     updateSessionTitleLocal,
   } = useSessions(projectId);
 
@@ -185,6 +186,26 @@ export default function SessionPage() {
     [updateSession]
   );
 
+  const handleDeleteProject = useCallback(
+    async (targetProjectId: string) => {
+      await deleteProject(targetProjectId);
+      if (targetProjectId === projectId) {
+        navigate("/", { replace: true });
+      }
+    },
+    [deleteProject, navigate, projectId]
+  );
+
+  const handleDeleteSession = useCallback(
+    async (targetProjectId: string, targetSessionId: string) => {
+      await deleteSession(targetProjectId, targetSessionId);
+      if (targetSessionId === sessionId) {
+        navigate("/", { replace: true });
+      }
+    },
+    [deleteSession, navigate, sessionId]
+  );
+
   return (
     <SidebarProvider className="h-svh overflow-hidden">
       <AppSidebar
@@ -199,6 +220,8 @@ export default function SessionPage() {
         onCreateSession={handleCreateSession}
         onRenameProject={handleRenameProject}
         onRenameSession={handleRenameSession}
+        onDeleteProject={handleDeleteProject}
+        onDeleteSession={handleDeleteSession}
       />
       <SidebarInset className="flex flex-col overflow-hidden">
         {sessionError ? (

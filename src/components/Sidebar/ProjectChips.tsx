@@ -18,6 +18,7 @@ interface ProjectChipsProps {
   onSelect: (projectId: string | null) => void;
   onCreate: () => void;
   onRename?: (projectId: string, newName: string) => void;
+  onDelete?: (project: Project) => void;
   counts: Record<string, number>;
 }
 
@@ -30,6 +31,7 @@ export default function ProjectChips({
   onSelect,
   onCreate,
   onRename,
+  onDelete,
   counts,
 }: ProjectChipsProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -86,6 +88,11 @@ export default function ProjectChips({
             />
             <ContextMenuContent>
               <ContextMenuItem onClick={() => setEditingId(project.id)}>Rename</ContextMenuItem>
+              {onDelete && (
+                <ContextMenuItem variant="destructive" onClick={() => onDelete(project)}>
+                  Delete
+                </ContextMenuItem>
+              )}
             </ContextMenuContent>
           </ContextMenu>
         );
