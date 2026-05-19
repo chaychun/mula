@@ -12,7 +12,6 @@ import { useCredentialStatus } from "@/hooks/useCredentialStatus";
 import { useIsTauri } from "@/hooks/use-tauri";
 import { cn } from "@/lib/utils";
 import CreateProjectModal from "./CreateProjectModal";
-import PickProjectModal from "./PickProjectModal";
 import ProjectChips from "./ProjectChips";
 import SessionList from "./SessionList";
 
@@ -26,7 +25,7 @@ interface AppSidebarProps {
   onSelectProject: (projectId: string) => void;
   onSelectSession: (projectId: string, sessionId: string) => void;
   onCreateProject: (name: string) => void;
-  onCreateSession: (projectId: string) => void;
+  onNewSession: () => void;
   onRenameProject?: (projectId: string, newName: string) => void;
   onRenameSession?: (projectId: string, sessionId: string, newTitle: string) => void;
   onDeleteProject?: (projectId: string) => Promise<void> | void;
@@ -42,14 +41,13 @@ export default function AppSidebar({
   onSelectProject,
   onSelectSession,
   onCreateProject,
-  onCreateSession,
+  onNewSession,
   onRenameProject,
   onRenameSession,
   onDeleteProject,
   onDeleteSession,
 }: AppSidebarProps) {
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
-  const [isPickProjectOpen, setIsPickProjectOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(currentProjectId);
   const [searchQuery, setSearchQuery] = useState("");
@@ -88,22 +86,6 @@ export default function AppSidebar({
   const handleCreateProject = (name: string) => {
     onCreateProject(name);
     setIsCreateProjectOpen(false);
-  };
-
-  const handleNewSession = () => {
-    if (activeProjectId) {
-      onCreateSession(activeProjectId);
-      return;
-    }
-    if (projects.length === 0) {
-      setIsCreateProjectOpen(true);
-      return;
-    }
-    if (projects.length === 1) {
-      onCreateSession(projects[0].id);
-      return;
-    }
-    setIsPickProjectOpen(true);
   };
 
   const topPad = isTauri ? "pt-10" : "pt-2";
@@ -166,7 +148,7 @@ export default function AppSidebar({
         <div className="flex items-center gap-1 px-2 py-1.5">
           <button
             type="button"
-            onClick={handleNewSession}
+            onClick={onNewSession}
             className="flex-1 flex items-center gap-2 h-8 px-2 text-[12px] font-medium text-left transition-colors hover:bg-sidebar-accent/15 text-foreground"
           >
             <Plus size={13} weight="bold" />
@@ -192,13 +174,6 @@ export default function AppSidebar({
         isOpen={isCreateProjectOpen}
         onClose={() => setIsCreateProjectOpen(false)}
         onCreate={handleCreateProject}
-      />
-
-      <PickProjectModal
-        isOpen={isPickProjectOpen}
-        projects={projects}
-        onClose={() => setIsPickProjectOpen(false)}
-        onPick={(projectId) => onCreateSession(projectId)}
       />
 
       <AuthSettingsModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />

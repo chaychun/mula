@@ -1,14 +1,24 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import AppSidebar from "@/components/Sidebar/AppSidebar";
 import CreateProjectModal from "@/components/Sidebar/CreateProjectModal";
 import AuthSettingsModal from "@/components/Auth/AuthSettingsModal";
+import MessageInput from "@/components/Chat/MessageInput";
+import ProjectSelector from "@/components/Chat/ProjectSelector";
 import { SidebarInset } from "@/components/ui/sidebar";
 import { useProjects } from "@/hooks/useProjects";
 import { useSessions } from "@/hooks/useSessions";
 import { useCredentialStatus } from "@/hooks/useCredentialStatus";
-import { Button } from "@/components/ui/button";
-import { GraduationCap, Plus, ShieldCheck, WarningCircle } from "@phosphor-icons/react";
+import { ShieldCheck, WarningCircle } from "@phosphor-icons/react";
+
+const LAST_PROJECT_KEY = "mula.lastProjectId";
+
+const SUGGESTIONS = [
+  "Explain how async/await works in JavaScript",
+  "Teach me Python list comprehensions",
+  "Walk me through React hooks",
+  "Quiz me on Big-O complexity",
+];
 
 export default function Home() {
   const navigate = useNavigate();
@@ -19,11 +29,21 @@ export default function Home() {
     updateProject,
     deleteProject,
   } = useProjects();
-  const { sessions, createSession, fetchSessions, updateSession, deleteSession } =
-    useSessions(null);
+  const {
+    sessions,
+    createSession,
+    fetchSessions,
+    errorByProject,
+    updateSession,
+    deleteSession,
+    clearSessionsForProject,
+  } = useSessions(null);
   const { status: credStatus, loading: credLoading, tauriAvailable } = useCredentialStatus();
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const [testingMode, setTestingMode] = useState(false);
   const hasAutoOpenedAuth = useRef(false);
   const credConfigured = credStatus.active_kind !== null;
 
@@ -36,11 +56,34 @@ export default function Home() {
     }
   }, [credLoading, tauriAvailable, credConfigured]);
 
+  // Eagerly fetch sessions for every project so sidebar counts populate.
+  useEffect(() => {
+    projects.forEach((p) => fetchSessions(p.id));
+  }, [projects, fetchSessions]);
+
+  const persistSelectedProject = useCallback((projectId: string | null) => {
+    setSelectedProjectId(projectId);
+    if (projectId) localStorage.setItem(LAST_PROJECT_KEY, projectId);
+    else localStorage.removeItem(LAST_PROJECT_KEY);
+  }, []);
+
+  // Initialize selectedProjectId from localStorage or first project.
+  useEffect(() => {
+    if (selectedProjectId && projects.some((p) => p.id === selectedProjectId)) return;
+    const stored = localStorage.getItem(LAST_PROJECT_KEY);
+    if (stored && projects.some((p) => p.id === stored)) {
+      setSelectedProjectId(stored);
+      return;
+    }
+    setSelectedProjectId(projects[0]?.id ?? null);
+  }, [projects, selectedProjectId]);
+
   const handleSelectProject = useCallback(
     (projectId: string) => {
+      persistSelectedProject(projectId);
       fetchSessions(projectId);
     },
-    [fetchSessions]
+    [fetchSessions, persistSelectedProject]
   );
 
   const handleSelectSession = useCallback(
@@ -53,18 +96,24 @@ export default function Home() {
   const handleCreateProject = useCallback(
     async (name: string) => {
       const project = await createProject(name);
-      const session = await createSession(project.id);
-      navigate(`/projects/${project.id}/sessions/${session.id}`);
+      persistSelectedProject(project.id);
     },
-    [createProject, createSession, navigate]
+    [createProject, persistSelectedProject]
   );
 
-  const handleCreateSession = useCallback(
-    async (projectId: string) => {
-      const session = await createSession(projectId);
-      navigate(`/projects/${projectId}/sessions/${session.id}`);
+  const handleNewSession = useCallback(() => {
+    // Already on home composer; nothing to do.
+  }, []);
+
+  const handleSend = useCallback(
+    async (message: string) => {
+      if (!selectedProjectId) return;
+      const session = await createSession(selectedProjectId);
+      navigate(`/projects/${selectedProjectId}/sessions/${session.id}`, {
+        state: { pendingMessage: message, testingMode },
+      });
     },
-    [createSession, navigate]
+    [selectedProjectId, createSession, navigate, testingMode]
   );
 
   const handleRenameProject = useCallback(
@@ -84,8 +133,10 @@ export default function Home() {
   const handleDeleteProject = useCallback(
     async (projectId: string) => {
       await deleteProject(projectId);
+      clearSessionsForProject(projectId);
+      if (selectedProjectId === projectId) persistSelectedProject(null);
     },
-    [deleteProject]
+    [deleteProject, clearSessionsForProject, selectedProjectId, persistSelectedProject]
   );
 
   const handleDeleteSession = useCallback(
@@ -95,64 +146,94 @@ export default function Home() {
     [deleteSession]
   );
 
+  const noProjects = projects.length === 0 && !projectsLoading;
+  const noCreds = !credConfigured && tauriAvailable;
+  const typingDisabled = noCreds;
+  const sendDisabled = noProjects || noCreds;
+  const placeholder = useMemo(() => {
+    if (noProjects) return "Pick or create a project to send";
+    if (noCreds) return "Set up Anthropic credentials to start";
+    return "What would you like to learn?";
+  }, [noProjects, noCreds]);
+
   return (
     <>
-      {/* Sidebar */}
       <AppSidebar
         projects={projects}
         sessions={sessions}
+        sessionErrorByProject={errorByProject}
         currentProjectId={null}
         currentSessionId={null}
         loading={projectsLoading}
         onSelectProject={handleSelectProject}
         onSelectSession={handleSelectSession}
         onCreateProject={handleCreateProject}
-        onCreateSession={handleCreateSession}
+        onNewSession={handleNewSession}
         onRenameProject={handleRenameProject}
         onRenameSession={handleRenameSession}
         onDeleteProject={handleDeleteProject}
         onDeleteSession={handleDeleteSession}
       />
 
-      {/* Welcome Screen */}
-      <SidebarInset className="flex items-center justify-center">
-        <div className="flex flex-col items-center text-center max-w-md gap-8">
-          <div className="p-4 bg-primary/10 text-primary">
-            <GraduationCap size={48} weight="duotone" />
-          </div>
-
-          <div className="space-y-3">
-            <h2 className="text-2xl font-bold tracking-tight">
-              Learn to code, one concept at a time
-            </h2>
-            <p className="text-muted-foreground">
-              Your AI tutor explains concepts, writes exercises, and reviews your code — at your
-              pace.
+      <SidebarInset className="flex flex-col">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="flex flex-col items-center w-full max-w-2xl px-6 gap-8">
+          <div className="flex flex-col items-center gap-2 text-center">
+            <h2 className="text-3xl font-bold tracking-tight">What would you like to learn?</h2>
+            <p className="text-sm text-muted-foreground">
+              Pick a topic or describe one. Your tutor will explain it, give you exercises, and
+              review your code.
             </p>
           </div>
 
-          <div className="flex flex-col items-center gap-3">
-            <Button
-              size="lg"
-              onClick={() => setIsModalOpen(true)}
-              disabled={!credConfigured && tauriAvailable}
-            >
-              <Plus size={18} weight="bold" />
-              Start a project
-            </Button>
-            <p className="text-xs text-muted-foreground">
-              or use the sidebar to pick an existing one
-            </p>
+          <div className="w-full">
+            <MessageInput
+              onSend={handleSend}
+              disabled={typingDisabled}
+              submitDisabled={sendDisabled}
+              placeholder={placeholder}
+              value={draft}
+              onValueChange={setDraft}
+              testingMode={testingMode}
+              onTestingModeChange={setTestingMode}
+              leadingActions={
+                <ProjectSelector
+                  projects={projects}
+                  selectedProjectId={selectedProjectId}
+                  onSelect={persistSelectedProject}
+                  onCreateProject={() => setIsCreateProjectOpen(true)}
+                  disabled={projectsLoading}
+                />
+              }
+            />
           </div>
 
-          {!credLoading && (
+          <div className="w-full flex flex-wrap gap-2 justify-center">
+            {SUGGESTIONS.map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setDraft(s)}
+                disabled={typingDisabled}
+                className="px-3 py-1.5 text-[12px] border border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+
+          </div>
+        </div>
+
+        {!credLoading && (
+          <div className="flex justify-center pb-4">
             <button
               type="button"
               onClick={() => setIsAuthOpen(true)}
-              className={`flex items-center gap-2 border px-3 py-2 text-xs transition-colors ${
+              className={`flex items-center gap-2 px-3 py-2 text-xs transition-colors ${
                 credConfigured
-                  ? "border-border text-muted-foreground hover:bg-muted/50"
-                  : "border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/15"
+                  ? "text-muted-foreground hover:text-foreground"
+                  : "text-destructive hover:opacity-80"
               }`}
             >
               {credConfigured ? (
@@ -170,16 +251,16 @@ export default function Home() {
                 </>
               )}
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </SidebarInset>
 
       <CreateProjectModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        isOpen={isCreateProjectOpen}
+        onClose={() => setIsCreateProjectOpen(false)}
         onCreate={(name) => {
           handleCreateProject(name);
-          setIsModalOpen(false);
+          setIsCreateProjectOpen(false);
         }}
       />
 

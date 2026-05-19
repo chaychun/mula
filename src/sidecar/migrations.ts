@@ -100,6 +100,14 @@ export const migrations: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_progress_project_id ON progress(project_id);
     `,
   },
+  {
+    version: 2,
+    name: "cleanup_empty_sessions",
+    up: `
+      DELETE FROM sessions
+      WHERE id NOT IN (SELECT DISTINCT session_id FROM messages);
+    `,
+  },
 ];
 
 export function runMigrations(db: Database): void {

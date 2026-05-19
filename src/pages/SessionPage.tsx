@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useState, useEffect, useLayoutEffect, useCallback, useRef } from "react";
+import { useLocation, useNavigate, useParams } from "react-router";
 import AppSidebar from "@/components/Sidebar/AppSidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import Chat from "@/components/Chat/Chat";
@@ -9,8 +9,11 @@ import { useChat } from "@/hooks/useChat";
 import { Button } from "@/components/ui";
 import { retrySidecarConnection } from "@/lib/sidecar";
 
+type SessionNavState = { pendingMessage?: string; testingMode?: boolean } | null;
+
 export default function SessionPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { projectId, sessionId } = useParams<{ projectId: string; sessionId: string }>();
 
   if (!projectId || !sessionId) {
@@ -28,11 +31,11 @@ export default function SessionPage() {
     error: sessionError,
     errorByProject,
     fetchSessions,
-    createSession,
     selectSession,
     updateSession,
     deleteSession,
     updateSessionTitleLocal,
+    clearSessionsForProject,
   } = useSessions(projectId);
 
   // Chat hook with exercise state
@@ -71,8 +74,19 @@ export default function SessionPage() {
     projects.forEach((p) => fetchSessions(p.id));
   }, [projects, fetchSessions]);
 
+  // Capture once whether this mount arrived with a pending message. If so, the
+  // session is brand new and empty — skip the initial load to avoid racing
+  // with sendMessage's optimistic user-message append.
+  const skipInitialLoadRef = useRef(
+    (location.state as SessionNavState)?.pendingMessage !== undefined
+  );
+
   // Load session data when sessionId changes
   useEffect(() => {
+    if (skipInitialLoadRef.current) {
+      skipInitialLoadRef.current = false;
+      return;
+    }
     const loadSessionData = async () => {
       const session = await selectSession(projectId, sessionId);
       if (session) {
@@ -150,20 +164,15 @@ export default function SessionPage() {
 
   const handleCreateProject = useCallback(
     async (name: string) => {
-      const project = await createProject(name);
-      const session = await createSession(project.id);
-      navigate(`/projects/${project.id}/sessions/${session.id}`);
+      await createProject(name);
+      navigate("/");
     },
-    [createProject, createSession, navigate]
+    [createProject, navigate]
   );
 
-  const handleCreateSession = useCallback(
-    async (targetProjectId: string) => {
-      const session = await createSession(targetProjectId);
-      navigate(`/projects/${targetProjectId}/sessions/${session.id}`);
-    },
-    [createSession, navigate]
-  );
+  const handleNewSession = useCallback(() => {
+    navigate("/");
+  }, [navigate]);
 
   const handleSendMessage = useCallback(
     (message: string) => {
@@ -171,6 +180,28 @@ export default function SessionPage() {
     },
     [sendMessage, testingMode]
   );
+
+  // If we arrived with a pending message (sent from home composer), fire it
+  // once. Ref guards against StrictMode double-mount.
+  const navState = location.state as SessionNavState;
+  const pendingMessage = navState?.pendingMessage;
+  const pendingTestingMode = navState?.testingMode;
+  const pendingFiredRef = useRef(false);
+  useLayoutEffect(() => {
+    if (!pendingMessage || pendingFiredRef.current) return;
+    pendingFiredRef.current = true;
+    const mode = pendingTestingMode ?? testingMode;
+    if (pendingTestingMode !== undefined) setTestingMode(pendingTestingMode);
+    sendMessage(pendingMessage, "message", undefined, undefined, mode);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [
+    pendingMessage,
+    pendingTestingMode,
+    sendMessage,
+    testingMode,
+    navigate,
+    location.pathname,
+  ]);
 
   const handleRenameProject = useCallback(
     async (targetProjectId: string, newName: string) => {
@@ -189,11 +220,12 @@ export default function SessionPage() {
   const handleDeleteProject = useCallback(
     async (targetProjectId: string) => {
       await deleteProject(targetProjectId);
+      clearSessionsForProject(targetProjectId);
       if (targetProjectId === projectId) {
         navigate("/", { replace: true });
       }
     },
-    [deleteProject, navigate, projectId]
+    [deleteProject, clearSessionsForProject, navigate, projectId]
   );
 
   const handleDeleteSession = useCallback(
@@ -217,7 +249,7 @@ export default function SessionPage() {
         onSelectProject={handleSelectProject}
         onSelectSession={handleSelectSession}
         onCreateProject={handleCreateProject}
-        onCreateSession={handleCreateSession}
+        onNewSession={handleNewSession}
         onRenameProject={handleRenameProject}
         onRenameSession={handleRenameSession}
         onDeleteProject={handleDeleteProject}

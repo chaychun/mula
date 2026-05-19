@@ -301,11 +301,12 @@ export function useChat({
               existingCall.status === "completed" &&
               existingCall.output
             ) {
+              const output = existingCall.output;
               // Track this fetch so we can await it before finalizing the message
               // Pass the abort signal so fetches can be cancelled if request is aborted
               const fetchPromise = (async () => {
                 try {
-                  const result = JSON.parse(existingCall.output);
+                  const result = JSON.parse(output);
                   if (result.exerciseId) {
                     const exercises = await fetchSessionWithRetry(
                       3,
@@ -339,9 +340,10 @@ export function useChat({
               existingCall.status === "completed" &&
               existingCall.output
             ) {
+              const output = existingCall.output;
               const fetchPromise = (async () => {
                 try {
-                  const result = JSON.parse(existingCall.output);
+                  const result = JSON.parse(output);
                   if (result.exerciseId) {
                     const exercises = await fetchSessionWithRetry(
                       3,

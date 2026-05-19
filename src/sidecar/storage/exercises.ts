@@ -1,3 +1,4 @@
+import type { SQLQueryBindings } from "bun:sqlite";
 import type { Exercise, ExerciseAttempt } from "../../lib/types";
 import { getDb } from "../database";
 import { nowIso, parseJsonArray } from "./utils";
@@ -140,13 +141,13 @@ export async function updateExercise(
   const now = nowIso();
 
   const sets: string[] = ["updated_at = ?"];
-  const values: unknown[] = [now];
+  const values: SQLQueryBindings[] = [now];
 
   for (const [key, column] of Object.entries(UPDATABLE_COLUMNS)) {
     const value = (updates as Record<string, unknown>)[key];
     if (value !== undefined) {
       sets.push(`${column} = ?`);
-      values.push(value);
+      values.push(value as SQLQueryBindings);
     }
   }
 

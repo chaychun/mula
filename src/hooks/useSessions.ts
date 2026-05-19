@@ -67,8 +67,6 @@ export function useSessions(_projectId: string | null) {
       });
       if (!response.ok) throw new Error("Failed to create session");
       const newSession = await response.json();
-      setSessions((prev) => [newSession, ...prev]);
-      setCurrentSession(newSession);
       return newSession;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -144,6 +142,23 @@ export function useSessions(_projectId: string | null) {
     setCurrentSession(null);
   }, []);
 
+  // Drop all sessions belonging to a project (e.g. after the project is deleted).
+  const clearSessionsForProject = useCallback(
+    (pid: string) => {
+      setSessions((prev) => prev.filter((s) => s.projectId !== pid));
+      setErrorByProject((prev) => {
+        if (!prev[pid]) return prev;
+        const next = { ...prev };
+        delete next[pid];
+        return next;
+      });
+      if (currentSession?.projectId === pid) {
+        setCurrentSession(null);
+      }
+    },
+    [currentSession?.projectId]
+  );
+
   return {
     sessions,
     currentSession,
@@ -158,5 +173,6 @@ export function useSessions(_projectId: string | null) {
     updateSessionTitleLocal,
     selectSession,
     clearSession,
+    clearSessionsForProject,
   };
 }

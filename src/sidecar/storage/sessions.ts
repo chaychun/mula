@@ -1,3 +1,4 @@
+import type { SQLQueryBindings } from "bun:sqlite";
 import type { Session } from "../../lib/types";
 import { getDb } from "../database";
 import { generateId, nowIso, parseJsonArray } from "./utils";
@@ -101,13 +102,13 @@ export async function updateSession(
   const now = nowIso();
 
   const sets: string[] = ["updated_at = ?"];
-  const values: unknown[] = [now];
+  const values: SQLQueryBindings[] = [now];
 
   for (const [key, spec] of Object.entries(SESSION_COLUMN_MAP)) {
     const value = (updates as Record<string, unknown>)[key];
     if (value !== undefined) {
       sets.push(`${spec.column} = ?`);
-      values.push(spec.transform ? spec.transform(value) : value);
+      values.push((spec.transform ? spec.transform(value) : value) as SQLQueryBindings);
     }
   }
 
