@@ -109,7 +109,7 @@ export default function AppSidebar({
   const topPad = isTauri ? "pt-10" : "pt-2";
 
   return (
-    <Sidebar collapsible="none">
+    <Sidebar collapsible="none" className="h-svh">
       {isTauri && <div data-tauri-drag-region className="absolute inset-x-0 top-0 h-10 z-20" />}
 
       <SidebarContent className={cn("relative", topPad)}>
