@@ -1,18 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { GraduationCap, Plus, ShieldCheck, WarningCircle } from "@phosphor-icons/react";
+import { useState, useEffect, useMemo } from "react";
+import { Gear, MagnifyingGlass, Plus, X } from "@phosphor-icons/react";
 import type { Project, Session } from "@/lib/types";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupAction,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-} from "@/components/ui/sidebar";
+import { Sidebar, SidebarContent, SidebarFooter } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Button } from "@/components/ui/button";
 import AuthSettingsModal from "@/components/Auth/AuthSettingsModal";
@@ -20,7 +11,9 @@ import { useCredentialStatus } from "@/hooks/useCredentialStatus";
 import { useIsTauri } from "@/hooks/use-tauri";
 import { cn } from "@/lib/utils";
 import CreateProjectModal from "./CreateProjectModal";
-import ProjectMenu from "./ProjectMenu";
+import PickProjectModal from "./PickProjectModal";
+import ProjectChips from "./ProjectChips";
+import SessionList from "./SessionList";
 
 interface AppSidebarProps {
   projects: Project[];
@@ -28,6 +21,7 @@ interface AppSidebarProps {
   sessionErrorByProject?: Record<string, string>;
   currentProjectId: string | null;
   currentSessionId: string | null;
+  loading?: boolean;
   onSelectProject: (projectId: string) => void;
   onSelectSession: (projectId: string, sessionId: string) => void;
   onCreateProject: (name: string) => void;
@@ -49,86 +43,145 @@ export default function AppSidebar({
   onRenameProject,
   onRenameSession,
 }: AppSidebarProps) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
+  const [isPickProjectOpen, setIsPickProjectOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(currentProjectId);
+  const [searchQuery, setSearchQuery] = useState("");
   const { status: credStatus } = useCredentialStatus();
   const credConfigured = credStatus.active_kind !== null;
   const isTauri = useIsTauri();
 
-  const handleCreateProject = (name: string) => {
-    onCreateProject(name);
-    setIsModalOpen(false);
+  useEffect(() => {
+    if (currentProjectId && activeProjectId && currentProjectId !== activeProjectId) {
+      setActiveProjectId(currentProjectId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentProjectId]);
+
+  const sessionCountByProject = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const s of sessions) counts[s.projectId] = (counts[s.projectId] ?? 0) + 1;
+    return counts;
+  }, [sessions]);
+
+  const handleSelectChip = (projectId: string | null) => {
+    setActiveProjectId(projectId);
+    if (projectId) onSelectProject(projectId);
   };
 
-  return (
-    <Sidebar>
-      <SidebarHeader className={cn("relative border-b border-sidebar-border", isTauri && "pt-10")}>
-        {isTauri && <div data-tauri-drag-region className="absolute inset-x-0 top-0 h-10 z-20" />}
-        <div data-tauri-drag-region className="flex items-center gap-2 px-2">
-          <GraduationCap className="size-5" weight="bold" />
-          <span className="text-sm font-bold">Mula</span>
-        </div>
-      </SidebarHeader>
+  const handleCreateProject = (name: string) => {
+    onCreateProject(name);
+    setIsCreateProjectOpen(false);
+  };
 
-      {/* Content */}
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Projects</SidebarGroupLabel>
-          <SidebarGroupAction title="New Project" onClick={() => setIsModalOpen(true)}>
-            <Plus className="size-4" />
-            <span className="sr-only">New Project</span>
-          </SidebarGroupAction>
-          <SidebarGroupContent>
-            {projects.length === 0 ? (
-              <div className="text-center py-8 px-2 text-muted-foreground text-xs">
-                No projects yet.
-                <br />
-                Create one to get started!
-              </div>
-            ) : (
-              <ProjectMenu
-                projects={projects}
-                sessions={sessions}
-                sessionErrorByProject={sessionErrorByProject}
-                currentProjectId={currentProjectId}
-                currentSessionId={currentSessionId}
-                onSelectProject={onSelectProject}
-                onSelectSession={onSelectSession}
-                onCreateSession={onCreateSession}
-                onRenameProject={onRenameProject}
-                onRenameSession={onRenameSession}
-              />
+  const handleNewSession = () => {
+    if (activeProjectId) {
+      onCreateSession(activeProjectId);
+      return;
+    }
+    if (projects.length === 0) {
+      setIsCreateProjectOpen(true);
+      return;
+    }
+    if (projects.length === 1) {
+      onCreateSession(projects[0].id);
+      return;
+    }
+    setIsPickProjectOpen(true);
+  };
+
+  const topPad = isTauri ? "pt-10" : "pt-2";
+
+  return (
+    <Sidebar collapsible="none">
+      {isTauri && <div data-tauri-drag-region className="absolute inset-x-0 top-0 h-10 z-20" />}
+
+      <SidebarContent className={cn("relative", topPad)}>
+        <div className="flex items-center gap-1.5 px-2">
+          <div className="relative flex-1 h-7">
+            <MagnifyingGlass
+              size={13}
+              className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground/70 pointer-events-none"
+            />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search sessions"
+              className="w-full h-7 pl-7 pr-7 text-[12px] bg-transparent border border-sidebar-border focus:outline-none focus:border-foreground/40 placeholder:text-muted-foreground/50"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 size-4 inline-flex items-center justify-center text-muted-foreground hover:text-foreground"
+                aria-label="Clear search"
+              >
+                <X size={11} weight="bold" />
+              </button>
             )}
-          </SidebarGroupContent>
-        </SidebarGroup>
+          </div>
+        </div>
+
+        <ProjectChips
+          projects={projects}
+          activeProjectId={activeProjectId}
+          counts={sessionCountByProject}
+          onSelect={handleSelectChip}
+          onCreate={() => setIsCreateProjectOpen(true)}
+          onRename={onRenameProject}
+        />
+
+        <SessionList
+          projects={projects}
+          sessions={sessions}
+          sessionErrorByProject={sessionErrorByProject}
+          activeProjectId={activeProjectId}
+          currentSessionId={currentSessionId}
+          searchQuery={searchQuery}
+          onSelectSession={onSelectSession}
+          onRenameSession={onRenameSession}
+        />
       </SidebarContent>
 
-      {/* Footer */}
-      <SidebarFooter className="border-t border-sidebar-border !flex-row items-center justify-between gap-1 px-2">
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={() => setIsAuthOpen(true)}
-          title={credConfigured ? "Anthropic authentication" : "Set up Anthropic authentication"}
-          className="relative"
-        >
-          {credConfigured ? (
-            <ShieldCheck size={16} weight="duotone" />
-          ) : (
-            <WarningCircle size={16} weight="fill" className="text-destructive" />
-          )}
-          <span className="sr-only">Authentication</span>
-          {!credConfigured && (
-            <span className="absolute top-1 right-1 size-1.5 rounded-full bg-destructive" />
-          )}
-        </Button>
-        <ThemeToggle />
+      <SidebarFooter className="gap-0 p-0">
+        <div className="flex items-center gap-1 px-2 py-1.5">
+          <button
+            type="button"
+            onClick={handleNewSession}
+            className="flex-1 flex items-center gap-2 h-8 px-2 text-[12px] font-medium text-left transition-colors hover:bg-sidebar-accent/15 text-foreground"
+          >
+            <Plus size={13} weight="bold" />
+            <span>New session</span>
+          </button>
+
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setIsAuthOpen(true)}
+            title={credConfigured ? "Settings" : "Set up Anthropic authentication"}
+            className="relative shrink-0"
+          >
+            <Gear size={16} weight={credConfigured ? "regular" : "fill"} />
+            <span className="sr-only">Settings</span>
+            {!credConfigured && <span className="absolute top-1 right-1 size-1.5 bg-destructive" />}
+          </Button>
+          <ThemeToggle />
+        </div>
       </SidebarFooter>
 
       <CreateProjectModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        isOpen={isCreateProjectOpen}
+        onClose={() => setIsCreateProjectOpen(false)}
         onCreate={handleCreateProject}
+      />
+
+      <PickProjectModal
+        isOpen={isPickProjectOpen}
+        projects={projects}
+        onClose={() => setIsPickProjectOpen(false)}
+        onPick={(projectId) => onCreateSession(projectId)}
       />
 
       <AuthSettingsModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
