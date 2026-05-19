@@ -1,6 +1,0 @@
-{
-  "scripts": {
-    "setup": "bun install; cp $CONDUCTOR_ROOT_PATH/.env .env 2>/dev/null || cp $CONDUCTOR_ROOT_PATH/.env.local .env 2>/dev/null; true",
-    "run": "bun run dev:all"
-  }
-}
