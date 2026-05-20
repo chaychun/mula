@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckCircleIcon, ArrowCounterClockwiseIcon, XCircleIcon, LightbulbIcon } from "@phosphor-icons/react";
+import { InlineMarkdown } from "@/components/ui/markdown";
 
 interface ExerciseUpdateBlockProps {
   status: string;
@@ -54,7 +55,9 @@ export default function ExerciseUpdateBlock({
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold">{config.label}</p>
           {exerciseTitle && (
-            <p className="text-xs text-muted-foreground truncate">{exerciseTitle}</p>
+            <p className="text-xs text-muted-foreground truncate">
+              <InlineMarkdown>{exerciseTitle}</InlineMarkdown>
+            </p>
           )}
         </div>
       </div>

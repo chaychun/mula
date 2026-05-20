@@ -2,6 +2,7 @@
 
 import type { ConceptQuestion } from "@/lib/types";
 import { CheckCircleIcon, XCircleIcon, WarningCircleIcon } from "@phosphor-icons/react";
+import { InlineMarkdown } from "@/components/ui/markdown";
 
 interface ConceptQuestionBlockProps {
   question: ConceptQuestion;
@@ -25,7 +26,9 @@ export default function ConceptQuestionBlock({
 
       {/* Question */}
       <div className="p-4 space-y-3">
-        <p className="text-sm font-medium">{question.question}</p>
+        <p className="text-sm font-medium">
+          <InlineMarkdown>{question.question}</InlineMarkdown>
+        </p>
 
         {/* Options */}
         <div className="space-y-2">

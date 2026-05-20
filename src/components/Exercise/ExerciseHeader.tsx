@@ -3,6 +3,7 @@
 import { CaretDownIcon, CaretRightIcon, ArrowClockwiseIcon } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { InlineMarkdown } from "@/components/ui/markdown";
 import type { ExerciseStatus } from "@/lib/types";
 
 interface ExerciseHeaderProps {
@@ -33,7 +34,7 @@ export default function ExerciseHeader({
       ) : (
         <CaretDownIcon className="size-4 shrink-0" />
       )}
-      <span className="font-semibold text-sm flex-1 text-left">{title}</span>
+      <InlineMarkdown className="font-semibold text-sm flex-1 text-left">{title}</InlineMarkdown>
       {isRetry && (
         <Badge variant="retry">
           <ArrowClockwiseIcon className="w-3 h-3 mr-1" />

@@ -140,4 +140,54 @@ function MarkdownComponent({
 const Markdown = memo(MarkdownComponent);
 Markdown.displayName = "Markdown";
 
-export { Markdown };
+const INLINE_COMPONENTS: Partial<Components> = {
+  p: ({ children }) => <>{children}</>,
+  strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+  em: ({ children }) => <em className="italic">{children}</em>,
+  a: ({ href, children }) => (
+    <a
+      href={href}
+      className="text-primary hover:underline underline-offset-2"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      {children}
+    </a>
+  ),
+  code: ({ children }) => <InlineCode>{children}</InlineCode>,
+  pre: ({ children }) => <>{children}</>,
+  h1: ({ children }) => <>{children}</>,
+  h2: ({ children }) => <>{children}</>,
+  h3: ({ children }) => <>{children}</>,
+  h4: ({ children }) => <>{children}</>,
+  h5: ({ children }) => <>{children}</>,
+  h6: ({ children }) => <>{children}</>,
+  ul: ({ children }) => <>{children}</>,
+  ol: ({ children }) => <>{children}</>,
+  li: ({ children }) => <>{children}</>,
+  blockquote: ({ children }) => <>{children}</>,
+  hr: () => null,
+  br: () => <> </>,
+};
+
+type InlineMarkdownProps = {
+  children: string;
+  className?: string;
+};
+
+function InlineMarkdownComponent({ children, className }: InlineMarkdownProps) {
+  // Strip newlines so single-line title renders inline
+  const content = children.replace(/\s*\n\s*/g, " ").trim();
+  return (
+    <span className={className}>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={INLINE_COMPONENTS}>
+        {content}
+      </ReactMarkdown>
+    </span>
+  );
+}
+
+const InlineMarkdown = memo(InlineMarkdownComponent);
+InlineMarkdown.displayName = "InlineMarkdown";
+
+export { Markdown, InlineMarkdown };
