@@ -1,6 +1,7 @@
 import type { ConceptQuestion, ConceptQuestionOption } from "../../lib/types";
 import { getDb } from "../database";
 import { nowIso, parseJsonArray } from "./utils";
+import { emitSessionChanged } from "./events";
 
 export interface ConceptQuestionRow {
   id: string;
@@ -37,7 +38,7 @@ export function listConceptQuestions(sessionId: string): Record<string, ConceptQ
 }
 
 export async function addConceptQuestion(
-  _projectId: string,
+  projectId: string,
   sessionId: string,
   question: ConceptQuestion
 ): Promise<void> {
@@ -61,10 +62,11 @@ export async function addConceptQuestion(
     db.prepare("UPDATE sessions SET updated_at = ? WHERE id = ?").run(now, sessionId);
   });
   insert();
+  emitSessionChanged(projectId, sessionId);
 }
 
 export async function answerConceptQuestion(
-  _projectId: string,
+  projectId: string,
   sessionId: string,
   questionId: string,
   selectedOptionIndex: number
@@ -89,6 +91,7 @@ export async function answerConceptQuestion(
     db.prepare("UPDATE sessions SET updated_at = ? WHERE id = ?").run(now, sessionId);
   });
   update();
+  emitSessionChanged(projectId, sessionId);
 
   return {
     id: row.id,

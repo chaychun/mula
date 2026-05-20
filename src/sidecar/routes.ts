@@ -1,6 +1,5 @@
 import { Router } from "express";
 import * as storage from "./storage";
-import { publishStateRefresh } from "./chatJobs";
 
 export const router = Router();
 
@@ -179,7 +178,6 @@ router.post(
         return;
       }
 
-      void publishStateRefresh(req.params.projectId, req.params.sessionId);
       res.json(attempt);
     } catch (error) {
       console.error("Failed to submit attempt:", error);
@@ -205,7 +203,6 @@ router.post(
 
       await storage.setActiveExerciseId(projectId, sessionId, exerciseId);
 
-      void publishStateRefresh(projectId, sessionId);
       res.json({ success: true, exerciseId, status: "active" });
     } catch (error) {
       console.error("Failed to retry exercise:", error);
@@ -231,7 +228,6 @@ router.post(
 
       await storage.setActiveExerciseId(projectId, sessionId, null);
 
-      void publishStateRefresh(projectId, sessionId);
       res.json({ success: true, exerciseId, status: "skipped" });
     } catch (error) {
       console.error("Failed to skip exercise:", error);
@@ -266,7 +262,6 @@ router.post(
         return;
       }
 
-      void publishStateRefresh(req.params.projectId, req.params.sessionId);
       res.json(question);
     } catch (error) {
       console.error("Failed to answer concept question:", error);

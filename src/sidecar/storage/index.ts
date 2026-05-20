@@ -6,3 +6,4 @@ export * from "./exercises";
 export * from "./attempts";
 export * from "./conceptQuestions";
 export * from "./progress";
+export * from "./events";

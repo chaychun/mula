@@ -5,6 +5,7 @@ import { generateId, nowIso, parseJsonArray } from "./utils";
 import { listMessages, replaceMessages } from "./messages";
 import { listExercises } from "./exercises";
 import { listConceptQuestions } from "./conceptQuestions";
+import { emitSessionChanged } from "./events";
 
 interface SessionRow {
   id: string;
@@ -124,6 +125,7 @@ export async function updateSession(
     replaceMessages(sessionId, updates.messages);
   }
 
+  emitSessionChanged(projectId, sessionId);
   return getSession(projectId, sessionId);
 }
 

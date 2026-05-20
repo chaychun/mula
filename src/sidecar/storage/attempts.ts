@@ -1,6 +1,7 @@
 import type { ExerciseAttempt } from "../../lib/types";
 import { getDb } from "../database";
 import { nowIso, parseJsonObject } from "./utils";
+import { emitSessionChanged } from "./events";
 
 export interface AttemptRow {
   id: string;
@@ -34,7 +35,7 @@ export function listAttemptsForExercise(exerciseId: string): ExerciseAttempt[] {
 }
 
 export async function submitAttempt(
-  _projectId: string,
+  projectId: string,
   sessionId: string,
   exerciseId: string,
   attemptId: string,
@@ -63,6 +64,7 @@ export async function submitAttempt(
     db.prepare("UPDATE sessions SET updated_at = ? WHERE id = ?").run(now, sessionId);
   });
   insert();
+  emitSessionChanged(projectId, sessionId);
 
   return {
     id: attemptId,

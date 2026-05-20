@@ -3,6 +3,7 @@ import type { Exercise, ExerciseAttempt } from "../../lib/types";
 import { getDb } from "../database";
 import { nowIso, parseJsonArray } from "./utils";
 import { listAttemptsForExercise, rowToAttempt, type AttemptRow } from "./attempts";
+import { emitSessionChanged } from "./events";
 
 export interface ExerciseRow {
   id: string;
@@ -77,7 +78,7 @@ export function getExercise(sessionId: string, exerciseId: string): Exercise | n
 }
 
 export async function addExercise(
-  _projectId: string,
+  projectId: string,
   sessionId: string,
   exercise: Exercise
 ): Promise<void> {
@@ -121,6 +122,7 @@ export async function addExercise(
     db.prepare("UPDATE sessions SET updated_at = ? WHERE id = ?").run(now, sessionId);
   });
   insert();
+  emitSessionChanged(projectId, sessionId);
 }
 
 const UPDATABLE_COLUMNS: Record<string, string> = {
@@ -132,7 +134,7 @@ const UPDATABLE_COLUMNS: Record<string, string> = {
 };
 
 export async function updateExercise(
-  _projectId: string,
+  projectId: string,
   sessionId: string,
   exerciseId: string,
   updates: Partial<Exercise>
@@ -164,6 +166,7 @@ export async function updateExercise(
 
   if (result.changes > 0) {
     db.prepare("UPDATE sessions SET updated_at = ? WHERE id = ?").run(now, sessionId);
+    emitSessionChanged(projectId, sessionId);
     return true;
   }
   return false;
@@ -179,4 +182,5 @@ export async function setActiveExerciseId(
   db.prepare(
     "UPDATE sessions SET active_exercise_id = ?, updated_at = ? WHERE id = ? AND project_id = ?"
   ).run(exerciseId, now, sessionId, projectId);
+  emitSessionChanged(projectId, sessionId);
 }

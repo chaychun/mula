@@ -13,6 +13,7 @@ import { tutorServer } from "./tutorServer";
 import { getTutorSystemPrompt } from "../lib/agent/systemPrompt";
 import * as storage from "./storage";
 import { nowIso } from "./storage/utils";
+import { onSessionChanged } from "./storage/events";
 
 export type ChatAction = "message" | "submit" | "hint" | "skip" | "concept_answer";
 
@@ -37,6 +38,13 @@ interface ChatJob {
 
 const jobs = new Map<string, ChatJob>();
 const subscribers = new Map<string, Set<Response>>();
+
+// Storage layer fires session:changed on every mutation. Refresh subscribers' state
+// from storage so we never miss an update — replaces the fragile manual
+// publishStateRefresh calls scattered through route handlers.
+onSessionChanged(({ projectId, sessionId }) => {
+  void publishStateRefresh(projectId, sessionId);
+});
 
 function generateMessageId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
@@ -100,7 +108,7 @@ export function isRunning(sessionId: string): boolean {
   return jobs.has(sessionId);
 }
 
-export async function publishStateRefresh(projectId: string, sessionId: string): Promise<void> {
+async function publishStateRefresh(projectId: string, sessionId: string): Promise<void> {
   const subs = subscribers.get(sessionId);
   if (!subs || subs.size === 0) return;
   const session = await storage.getSession(projectId, sessionId);
@@ -326,31 +334,6 @@ async function runJob(job: ChatJob, opts: StartJobOptions): Promise<void> {
       }
     }
 
-    // Tools that write to storage have side effects we mirror back into state
-    if (existing.status === "completed") {
-      const name = existing.name;
-      if (name === "mcp__mula__create_exercise" || name === "mcp__mula__update_exercise") {
-        const session = await storage.getSession(projectId, sessionId);
-        if (session) {
-          job.state.exercises = session.exercises;
-          job.state.activeExerciseId = session.activeExerciseId;
-        }
-      } else if (name === "mcp__mula__ask_concept_question") {
-        const session = await storage.getSession(projectId, sessionId);
-        if (session) {
-          job.state.conceptQuestions = session.conceptQuestions;
-        }
-      } else if (name === "mcp__mula__wrap_up_session") {
-        // wrap_up updates status/topics/summary — re-sync messages too, just in case
-        const session = await storage.getSession(projectId, sessionId);
-        if (session) {
-          job.state.exercises = session.exercises;
-          job.state.activeExerciseId = session.activeExerciseId;
-          job.state.conceptQuestions = session.conceptQuestions;
-        }
-      }
-    }
-
     publishInProgress();
   };
 
@@ -386,7 +369,6 @@ async function runJob(job: ChatJob, opts: StartJobOptions): Promise<void> {
       if (env.type === "system" && env.subtype === "init" && env.session_id) {
         job.state.agentSessionId = env.session_id;
         await storage.updateSession(projectId, sessionId, { agentSessionId: env.session_id });
-        broadcast(sessionId, "state", job.state);
       }
 
       if (env.type === "assistant" && env.message?.content) {
@@ -464,13 +446,6 @@ async function runJob(job: ChatJob, opts: StartJobOptions): Promise<void> {
         messages: job.state.messages,
         agentSessionId: job.state.agentSessionId,
       });
-      // Re-pull exercises / concept Qs in case the tail of the run touched storage
-      const refreshed = await storage.getSession(projectId, sessionId);
-      if (refreshed) {
-        job.state.exercises = refreshed.exercises;
-        job.state.conceptQuestions = refreshed.conceptQuestions;
-        job.state.activeExerciseId = refreshed.activeExerciseId;
-      }
     } else {
       job.state.inProgressMessage = null;
     }
