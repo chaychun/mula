@@ -254,7 +254,7 @@ function InlineCode({ children }: { children: React.ReactNode }) {
     <Tooltip open={forceOpen}>
       <TooltipTrigger
         onClick={handleClick}
-        className="px-1.5 py-0.5 bg-yellow-100/50 dark:bg-yellow-900/20 text-[0.9em] font-mono border border-yellow-200/50 dark:border-yellow-700/30 cursor-pointer hover:bg-yellow-200/50 dark:hover:bg-yellow-800/30 transition-colors"
+        className="px-1.5 py-0.5 bg-yellow-100/25 dark:bg-yellow-900/10 text-yellow-800 dark:text-yellow-200 text-[0.9em] font-mono cursor-pointer hover:bg-yellow-200/30 dark:hover:bg-yellow-800/20 transition-colors"
       >
         {children}
       </TooltipTrigger>

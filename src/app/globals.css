@@ -128,6 +128,15 @@
   body {
     @apply bg-background text-foreground overscroll-none h-full overflow-hidden;
   }
+  code,
+  pre,
+  kbd,
+  samp,
+  .font-mono,
+  [class*="font-mono"] {
+    font-variant-ligatures: none;
+    font-feature-settings: "liga" 0, "clig" 0, "calt" 0, "dlig" 0, "hlig" 0, "ss01" 0, "ss02" 0, "ss03" 0, "ss04" 0, "ss05" 0, "zero" 0, "cv01" 0, "cv02" 0;
+  }
 }
 
 /* Fill-in-blank editable zone highlighting */
