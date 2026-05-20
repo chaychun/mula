@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import { initDatabase, closeDatabase } from "./database";
 import { router } from "./routes";
-import { handleChatStart, handleChatEvents, handleChatAbort } from "./chatRoute";
+import { handleChatStart, handleChatEvents, handleChatAbort, handleJobsEvents } from "./chatRoute";
 import { handleVerify } from "./verifyRoute";
 
 // Read configuration from environment (injected by Rust shell)
@@ -58,6 +58,7 @@ app.use(router);
 app.post("/api/chat", handleChatStart);
 app.get("/api/projects/:projectId/sessions/:sessionId/chat/events", handleChatEvents);
 app.post("/api/projects/:projectId/sessions/:sessionId/chat/abort", handleChatAbort);
+app.get("/api/jobs/events", handleJobsEvents);
 
 // Credential verification — runs a tiny Agent SDK call to confirm auth works
 app.post("/api/verify-credential", handleVerify);

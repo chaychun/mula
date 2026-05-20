@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import AuthSettingsModal from "@/components/Auth/AuthSettingsModal";
 import { useCredentialStatus } from "@/hooks/useCredentialStatus";
+import { useGlobalJobStatus } from "@/hooks/useGlobalJobStatus";
 import { useIsTauri } from "@/hooks/use-tauri";
 import { cn } from "@/lib/utils";
 import CreateProjectModal from "./CreateProjectModal";
@@ -56,6 +57,12 @@ export default function AppSidebar({
   const { status: credStatus } = useCredentialStatus();
   const credConfigured = credStatus.active_kind !== null;
   const isTauri = useIsTauri();
+  const { indicators: jobIndicators, clearSession: clearJobIndicator } = useGlobalJobStatus();
+
+  const handleSelectSession = (projectId: string, sessionId: string) => {
+    clearJobIndicator(sessionId);
+    onSelectSession(projectId, sessionId);
+  };
 
   useEffect(() => {
     if (currentProjectId && activeProjectId && currentProjectId !== activeProjectId) {
@@ -138,7 +145,8 @@ export default function AppSidebar({
           activeProjectId={activeProjectId}
           currentSessionId={currentSessionId}
           searchQuery={searchQuery}
-          onSelectSession={onSelectSession}
+          jobIndicators={jobIndicators}
+          onSelectSession={handleSelectSession}
           onRenameSession={onRenameSession}
           onDeleteSession={onDeleteSession ? setSessionToDelete : undefined}
         />

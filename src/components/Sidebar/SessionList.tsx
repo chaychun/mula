@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { WarningCircleIcon } from "@phosphor-icons/react";
 import type { Project, Session } from "@/lib/types";
+import type { SessionIndicator } from "@/hooks/useGlobalJobStatus";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -19,6 +20,7 @@ interface SessionListProps {
   activeProjectId: string | null;
   currentSessionId: string | null;
   searchQuery: string;
+  jobIndicators?: Record<string, SessionIndicator>;
   onSelectSession: (projectId: string, sessionId: string) => void;
   onRenameSession?: (
     projectId: string,
@@ -45,6 +47,30 @@ const BUCKET_ORDER: BucketKey[] = [
   "thisMonth",
   "earlier",
 ];
+
+function StatusDot({ indicator }: { indicator: SessionIndicator }) {
+  const { color, label, pulse } =
+    indicator.kind === "running"
+      ? { color: "bg-blue-500", label: "Running", pulse: true }
+      : indicator.kind === "error"
+        ? { color: "bg-destructive", label: indicator.error || "Error", pulse: false }
+        : { color: "bg-emerald-500", label: "Finished", pulse: false };
+  return (
+    <span
+      className="relative inline-flex shrink-0 size-2"
+      title={label}
+      aria-label={label}
+    >
+      {pulse && (
+        <span
+          aria-hidden
+          className={cn("absolute inset-0 rounded-full opacity-60 animate-ping", color)}
+        />
+      )}
+      <span aria-hidden className={cn("relative inline-block size-2 rounded-full", color)} />
+    </span>
+  );
+}
 
 function dateBucket(iso: string): BucketKey {
   const d = new Date(iso);
@@ -74,6 +100,7 @@ export default function SessionList({
   activeProjectId,
   currentSessionId,
   searchQuery,
+  jobIndicators,
   onSelectSession,
   onRenameSession,
   onDeleteSession,
@@ -179,6 +206,7 @@ export default function SessionList({
                 const isSelected = session.id === currentSessionId;
                 const isEditing = editingId === session.id;
                 const exCount = Object.keys(session.exercises ?? {}).length;
+                const indicator = jobIndicators?.[session.id];
 
                 return (
                   <li key={session.id} className="relative">
@@ -211,15 +239,18 @@ export default function SessionList({
                               isSelected ? "bg-muted/60" : "hover:bg-muted/30",
                             )}
                           >
-                            <span
-                              className={cn(
-                                "text-[13px] leading-tight truncate",
-                                isSelected
-                                  ? "font-semibold text-foreground"
-                                  : "font-medium",
-                              )}
-                            >
-                              {session.title || "Untitled session"}
+                            <span className="flex items-center gap-1.5 min-w-0">
+                              <span
+                                className={cn(
+                                  "text-[13px] leading-tight truncate",
+                                  isSelected
+                                    ? "font-semibold text-foreground"
+                                    : "font-medium",
+                                )}
+                              >
+                                {session.title || "Untitled session"}
+                              </span>
+                              {indicator && <StatusDot indicator={indicator} />}
                             </span>
                             <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                               <span className="truncate">

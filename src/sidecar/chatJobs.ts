@@ -38,6 +38,42 @@ interface ChatJob {
 
 const jobs = new Map<string, ChatJob>();
 const subscribers = new Map<string, Set<Response>>();
+const globalSubscribers = new Set<Response>();
+
+export type GlobalJobStatus = "running" | "finished" | "error" | "aborted";
+
+export interface GlobalJobEvent {
+  sessionId: string;
+  projectId: string;
+  status: GlobalJobStatus;
+  error?: string;
+}
+
+function broadcastGlobal(event: string, payload: unknown): void {
+  if (globalSubscribers.size === 0) return;
+  const chunk = `event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`;
+  for (const res of globalSubscribers) {
+    try {
+      res.write(chunk);
+    } catch {
+      // dead connection — close handler cleans up
+    }
+  }
+}
+
+export function subscribeGlobalJobs(res: Response): () => void {
+  globalSubscribers.add(res);
+  return () => {
+    globalSubscribers.delete(res);
+  };
+}
+
+export function getGlobalJobsSnapshot(): Array<{ sessionId: string; projectId: string }> {
+  return Array.from(jobs.values()).map((j) => ({
+    sessionId: j.sessionId,
+    projectId: j.projectId,
+  }));
+}
 
 // Storage layer fires session:changed on every mutation. Refresh subscribers' state
 // from storage so we never miss an update — replaces the fragile manual
@@ -197,6 +233,7 @@ export async function startJob(opts: StartJobOptions): Promise<StartJobResult> {
   };
   jobs.set(sessionId, job);
   broadcast(sessionId, "state", state);
+  broadcastGlobal("state", { sessionId, projectId, status: "running" } satisfies GlobalJobEvent);
 
   job.done = runJob(job, opts).catch((err) => {
     console.error("[chatJobs] runJob crashed:", err);
@@ -453,6 +490,11 @@ async function runJob(job: ChatJob, opts: StartJobOptions): Promise<void> {
     job.state.status = "idle";
     broadcast(sessionId, "state", job.state);
     broadcast(sessionId, "done", { aborted: job.abort.signal.aborted });
+    broadcastGlobal("state", {
+      sessionId,
+      projectId,
+      status: job.abort.signal.aborted ? "aborted" : "finished",
+    } satisfies GlobalJobEvent);
   } catch (err) {
     console.error("[chatJobs] agent error:", err);
     job.state.status = "error";
@@ -460,6 +502,12 @@ async function runJob(job: ChatJob, opts: StartJobOptions): Promise<void> {
     job.state.inProgressMessage = null;
     broadcast(sessionId, "state", job.state);
     broadcast(sessionId, "error", { message: job.state.error });
+    broadcastGlobal("state", {
+      sessionId,
+      projectId,
+      status: "error",
+      error: job.state.error,
+    } satisfies GlobalJobEvent);
   } finally {
     jobs.delete(sessionId);
   }
