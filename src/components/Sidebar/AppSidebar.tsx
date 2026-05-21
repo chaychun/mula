@@ -57,12 +57,7 @@ export default function AppSidebar({
   const { status: credStatus } = useCredentialStatus();
   const credConfigured = credStatus.active_kind !== null;
   const isTauri = useIsTauri();
-  const { indicators: jobIndicators, clearSession: clearJobIndicator } = useGlobalJobStatus();
-
-  const handleSelectSession = (projectId: string, sessionId: string) => {
-    clearJobIndicator(sessionId);
-    onSelectSession(projectId, sessionId);
-  };
+  const { indicators: jobIndicators } = useGlobalJobStatus(currentSessionId);
 
   useEffect(() => {
     if (currentProjectId && activeProjectId && currentProjectId !== activeProjectId) {
@@ -146,7 +141,7 @@ export default function AppSidebar({
           currentSessionId={currentSessionId}
           searchQuery={searchQuery}
           jobIndicators={jobIndicators}
-          onSelectSession={handleSelectSession}
+          onSelectSession={onSelectSession}
           onRenameSession={onRenameSession}
           onDeleteSession={onDeleteSession ? setSessionToDelete : undefined}
         />

@@ -250,7 +250,9 @@ export default function SessionList({
                               >
                                 {session.title || "Untitled session"}
                               </span>
-                              {indicator && <StatusDot indicator={indicator} />}
+                              {indicator && !(isSelected && indicator.kind === "finished") && (
+                                <StatusDot indicator={indicator} />
+                              )}
                             </span>
                             <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                               <span className="truncate">

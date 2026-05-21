@@ -51,9 +51,8 @@ function writeUnseen(map: UnseenMap): void {
   }
 }
 
-export function useGlobalJobStatus(): {
+export function useGlobalJobStatus(activeSessionId: string | null): {
   indicators: Record<string, SessionIndicator>;
-  clearSession: (sessionId: string) => void;
 } {
   const [running, setRunning] = useState<Set<string>>(new Set());
   const [unseen, setUnseen] = useState<UnseenMap>(() => readUnseen());
@@ -63,6 +62,8 @@ export function useGlobalJobStatus(): {
   runningRef.current = running;
   const unseenRef = useRef(unseen);
   unseenRef.current = unseen;
+  const activeSessionRef = useRef(activeSessionId);
+  activeSessionRef.current = activeSessionId;
 
   const applyEvent = useCallback((ev: GlobalJobEvent) => {
     const { sessionId, status, error } = ev;
@@ -85,11 +86,25 @@ export function useGlobalJobStatus(): {
       setRunning(next);
     }
     if (status === "aborted") return; // user cancelled — no notification
+    // Skip "finished" badge for the session the user is currently viewing
+    if (status === "finished" && sessionId === activeSessionRef.current) return;
     const u: UnseenMap = { ...unseenRef.current };
     u[sessionId] = { status, error };
     setUnseen(u);
     writeUnseen(u);
   }, []);
+
+  // If a "finished" unseen entry exists for the session the user just opened,
+  // clear it. Errors stay until the user retries (handled by the running branch).
+  useEffect(() => {
+    if (!activeSessionId) return;
+    const entry = unseenRef.current[activeSessionId];
+    if (!entry || entry.status !== "finished") return;
+    const u = { ...unseenRef.current };
+    delete u[activeSessionId];
+    setUnseen(u);
+    writeUnseen(u);
+  }, [activeSessionId]);
 
   useEffect(() => {
     return subscribeGlobalStream((event, payload) => {
@@ -101,14 +116,6 @@ export function useGlobalJobStatus(): {
       }
     });
   }, [applyEvent]);
-
-  const clearSession = useCallback((sessionId: string) => {
-    if (!unseenRef.current[sessionId]) return;
-    const u = { ...unseenRef.current };
-    delete u[sessionId];
-    setUnseen(u);
-    writeUnseen(u);
-  }, []);
 
   const indicators: Record<string, SessionIndicator> = {};
   for (const sessionId of running) {
@@ -122,5 +129,5 @@ export function useGlobalJobStatus(): {
         : { kind: "finished" };
   }
 
-  return { indicators, clearSession };
+  return { indicators };
 }
