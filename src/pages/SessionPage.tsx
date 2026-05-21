@@ -9,7 +9,27 @@ import { useChat } from "@/hooks/useChat";
 import { Button } from "@/components/ui";
 import { retrySidecarConnection } from "@/lib/sidecar";
 
+import type { Session } from "@/lib/types";
+
 type SessionNavState = { pendingMessage?: string; testingMode?: boolean } | null;
+
+function SessionTitleHeader({
+  sessions,
+  sessionId,
+}: {
+  sessions: Session[];
+  sessionId: string;
+}) {
+  const title = sessions.find((s) => s.id === sessionId)?.title;
+  if (!title) return null;
+  return (
+    <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex h-10 items-center justify-center px-4">
+      <div className="max-w-[60%] truncate text-xs text-muted-foreground">
+        {title}
+      </div>
+    </div>
+  );
+}
 
 export default function SessionPage() {
   const navigate = useNavigate();
@@ -188,7 +208,9 @@ export default function SessionPage() {
             </div>
           </div>
         ) : (
-          <Chat
+          <>
+            <SessionTitleHeader sessions={sessions} sessionId={sessionId} />
+            <Chat
             messages={messages}
             exercises={exercises}
             conceptQuestions={conceptQuestions}
@@ -203,6 +225,7 @@ export default function SessionPage() {
             testingMode={testingMode}
             onTestingModeChange={setTestingMode}
           />
+          </>
         )}
       </SidebarInset>
     </SidebarProvider>
