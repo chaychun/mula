@@ -1,10 +1,23 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowUpIcon } from "@phosphor-icons/react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { PromptInput, PromptInputTextarea, PromptInputActions } from "@/components/ui/prompt-input";
+import {
+  PromptInput,
+  PromptInputTextarea,
+  PromptInputActions,
+  usePromptInput,
+} from "@/components/ui/prompt-input";
+
+function FocusOnSignal({ signal }: { signal: unknown }) {
+  const { textareaRef } = usePromptInput();
+  useEffect(() => {
+    textareaRef.current?.focus();
+  }, [signal, textareaRef]);
+  return null;
+}
 
 const showDevTools = process.env.NODE_ENV === "development";
 
@@ -18,6 +31,7 @@ interface MessageInputProps {
   value?: string;
   onValueChange?: (value: string) => void;
   leadingActions?: ReactNode;
+  focusSignal?: unknown;
 }
 
 export default function MessageInput({
@@ -30,6 +44,7 @@ export default function MessageInput({
   value,
   onValueChange,
   leadingActions,
+  focusSignal,
 }: MessageInputProps) {
   const [internalInput, setInternalInput] = useState("");
   const isControlled = value !== undefined && onValueChange !== undefined;
@@ -47,6 +62,7 @@ export default function MessageInput({
 
   return (
     <PromptInput value={input} onValueChange={setInput} onSubmit={handleSubmit} disabled={disabled}>
+      {focusSignal !== undefined && <FocusOnSignal signal={focusSignal} />}
       <PromptInputTextarea placeholder={placeholder} />
       <PromptInputActions className="flex items-center justify-between px-3 py-2 gap-2">
         <div className="flex items-center gap-2 min-w-0">

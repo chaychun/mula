@@ -2,7 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router";
 import { ThemeProvider } from "@/components/theme-provider";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import Layout from "@/components/Layout";
 import { CredentialProvider } from "@/hooks/useCredentialStatus";
 import { initSidecar, retrySidecarConnection } from "@/lib/sidecar";
 import Home from "@/pages/Home";
@@ -30,15 +30,13 @@ function renderApp() {
         <CredentialProvider>
           <BrowserRouter>
             <Routes>
-              <Route
-                path="/"
-                element={
-                  <SidebarProvider>
-                    <Home />
-                  </SidebarProvider>
-                }
-              />
-              <Route path="/projects/:projectId/sessions/:sessionId" element={<SessionPage />} />
+              <Route element={<Layout />}>
+                <Route path="/" element={<Home />} />
+                <Route
+                  path="/projects/:projectId/sessions/:sessionId"
+                  element={<SessionPage />}
+                />
+              </Route>
             </Routes>
           </BrowserRouter>
         </CredentialProvider>

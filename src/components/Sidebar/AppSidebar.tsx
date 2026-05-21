@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { GearIcon, MagnifyingGlassIcon, PlusIcon, XIcon } from "@phosphor-icons/react";
 import type { Project, Session } from "@/lib/types";
 import { Sidebar, SidebarContent, SidebarFooter } from "@/components/ui/sidebar";
@@ -20,10 +20,10 @@ interface AppSidebarProps {
   projects: Project[];
   sessions: Session[];
   sessionErrorByProject?: Record<string, string>;
-  currentProjectId: string | null;
+  activeProjectId: string | null;
   currentSessionId: string | null;
   loading?: boolean;
-  onSelectProject: (projectId: string) => void;
+  onSelectProject: (projectId: string | null) => void;
   onSelectSession: (projectId: string, sessionId: string) => void;
   onCreateProject: (name: string) => void;
   onNewSession: () => void;
@@ -37,7 +37,7 @@ export default function AppSidebar({
   projects,
   sessions,
   sessionErrorByProject,
-  currentProjectId,
+  activeProjectId,
   currentSessionId,
   onSelectProject,
   onSelectSession,
@@ -50,7 +50,6 @@ export default function AppSidebar({
 }: AppSidebarProps) {
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
-  const [activeProjectId, setActiveProjectId] = useState<string | null>(currentProjectId);
   const [searchQuery, setSearchQuery] = useState("");
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [sessionToDelete, setSessionToDelete] = useState<Session | null>(null);
@@ -59,31 +58,11 @@ export default function AppSidebar({
   const isTauri = useIsTauri();
   const { indicators: jobIndicators } = useGlobalJobStatus(currentSessionId);
 
-  useEffect(() => {
-    if (currentProjectId && activeProjectId && currentProjectId !== activeProjectId) {
-      setActiveProjectId(currentProjectId);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentProjectId]);
-
-  // If the active project filter points at a deleted/missing project, fall
-  // back to "All" so the session list stays usable.
-  useEffect(() => {
-    if (activeProjectId && !projects.some((p) => p.id === activeProjectId)) {
-      setActiveProjectId(null);
-    }
-  }, [projects, activeProjectId]);
-
   const sessionCountByProject = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const s of sessions) counts[s.projectId] = (counts[s.projectId] ?? 0) + 1;
     return counts;
   }, [sessions]);
-
-  const handleSelectChip = (projectId: string | null) => {
-    setActiveProjectId(projectId);
-    if (projectId) onSelectProject(projectId);
-  };
 
   const handleCreateProject = (name: string) => {
     onCreateProject(name);
@@ -127,7 +106,7 @@ export default function AppSidebar({
           projects={projects}
           activeProjectId={activeProjectId}
           counts={sessionCountByProject}
-          onSelect={handleSelectChip}
+          onSelect={onSelectProject}
           onCreate={() => setIsCreateProjectOpen(true)}
           onRename={onRenameProject}
           onDelete={onDeleteProject ? setProjectToDelete : undefined}

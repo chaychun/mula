@@ -1,17 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import AppSidebar from "@/components/Sidebar/AppSidebar";
 import CreateProjectModal from "@/components/Sidebar/CreateProjectModal";
 import AuthSettingsModal from "@/components/Auth/AuthSettingsModal";
 import MessageInput from "@/components/Chat/MessageInput";
 import ProjectSelector from "@/components/Chat/ProjectSelector";
 import { SidebarInset } from "@/components/ui/sidebar";
-import { useProjects } from "@/hooks/useProjects";
-import { useSessions } from "@/hooks/useSessions";
+import { useLayoutContext } from "@/components/Layout";
 import { useCredentialStatus } from "@/hooks/useCredentialStatus";
 import { ShieldCheckIcon, WarningCircleIcon } from "@phosphor-icons/react";
-
-const LAST_PROJECT_KEY = "mula.lastProjectId";
 
 const SUGGESTIONS = [
   "Explain how async/await works in JavaScript",
@@ -24,20 +20,13 @@ export default function Home() {
   const navigate = useNavigate();
   const {
     projects,
-    loading: projectsLoading,
+    projectsLoading,
     createProject,
-    updateProject,
-    deleteProject,
-  } = useProjects();
-  const {
-    sessions,
     createSession,
-    fetchSessions,
-    errorByProject,
-    updateSession,
-    deleteSession,
-    clearSessionsForProject,
-  } = useSessions(null);
+    activeProjectId,
+    setActiveProjectId,
+    newSessionToken,
+  } = useLayoutContext();
   const {
     status: credStatus,
     loading: credLoading,
@@ -45,16 +34,12 @@ export default function Home() {
   } = useCredentialStatus();
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
-    null,
-  );
   const [draft, setDraft] = useState("");
   const [testingMode, setTestingMode] = useState(false);
   const hasAutoOpenedAuth = useRef(false);
   const credConfigured = credStatus.active_kind !== null;
 
-  // First-launch: auto-open auth modal once if no credentials. Never re-fires
-  // after the user dismisses it.
+  // First-launch: auto-open auth modal once if no credentials.
   useEffect(() => {
     if (
       !credLoading &&
@@ -67,106 +52,28 @@ export default function Home() {
     }
   }, [credLoading, tauriAvailable, credConfigured]);
 
-  // Eagerly fetch sessions for every project so sidebar counts populate.
-  useEffect(() => {
-    projects.forEach((p) => fetchSessions(p.id));
-  }, [projects, fetchSessions]);
-
-  const persistSelectedProject = useCallback((projectId: string | null) => {
-    setSelectedProjectId(projectId);
-    if (projectId) localStorage.setItem(LAST_PROJECT_KEY, projectId);
-    else localStorage.removeItem(LAST_PROJECT_KEY);
-  }, []);
-
-  // Initialize selectedProjectId from localStorage or first project.
-  useEffect(() => {
-    if (selectedProjectId && projects.some((p) => p.id === selectedProjectId))
-      return;
-    const stored = localStorage.getItem(LAST_PROJECT_KEY);
-    if (stored && projects.some((p) => p.id === stored)) {
-      setSelectedProjectId(stored);
-      return;
-    }
-    setSelectedProjectId(projects[0]?.id ?? null);
-  }, [projects, selectedProjectId]);
-
-  const handleSelectProject = useCallback(
-    (projectId: string) => {
-      persistSelectedProject(projectId);
-      fetchSessions(projectId);
-    },
-    [fetchSessions, persistSelectedProject],
-  );
-
-  const handleSelectSession = useCallback(
-    (projectId: string, sessionId: string) => {
-      navigate(`/projects/${projectId}/sessions/${sessionId}`);
-    },
-    [navigate],
-  );
-
   const handleCreateProject = useCallback(
     async (name: string) => {
-      const project = await createProject(name);
-      persistSelectedProject(project.id);
+      await createProject(name);
     },
-    [createProject, persistSelectedProject],
+    [createProject],
   );
-
-  const handleNewSession = useCallback(() => {
-    // Already on home composer; nothing to do.
-  }, []);
 
   const handleSend = useCallback(
     async (message: string) => {
-      if (!selectedProjectId) return;
-      const session = await createSession(selectedProjectId);
-      navigate(`/projects/${selectedProjectId}/sessions/${session.id}`, {
+      if (!activeProjectId) return;
+      const session = await createSession(activeProjectId);
+      navigate(`/projects/${activeProjectId}/sessions/${session.id}`, {
         state: { pendingMessage: message, testingMode },
       });
     },
-    [selectedProjectId, createSession, navigate, testingMode],
-  );
-
-  const handleRenameProject = useCallback(
-    async (projectId: string, newName: string) => {
-      await updateProject(projectId, { name: newName });
-    },
-    [updateProject],
-  );
-
-  const handleRenameSession = useCallback(
-    async (projectId: string, sessionId: string, newTitle: string) => {
-      await updateSession(projectId, sessionId, { title: newTitle });
-    },
-    [updateSession],
-  );
-
-  const handleDeleteProject = useCallback(
-    async (projectId: string) => {
-      await deleteProject(projectId);
-      clearSessionsForProject(projectId);
-      if (selectedProjectId === projectId) persistSelectedProject(null);
-    },
-    [
-      deleteProject,
-      clearSessionsForProject,
-      selectedProjectId,
-      persistSelectedProject,
-    ],
-  );
-
-  const handleDeleteSession = useCallback(
-    async (projectId: string, sessionId: string) => {
-      await deleteSession(projectId, sessionId);
-    },
-    [deleteSession],
+    [activeProjectId, createSession, navigate, testingMode],
   );
 
   const noProjects = projects.length === 0 && !projectsLoading;
   const noCreds = !credConfigured && tauriAvailable;
   const typingDisabled = noCreds;
-  const sendDisabled = noProjects || noCreds;
+  const sendDisabled = noProjects || noCreds || !activeProjectId;
   const placeholder = useMemo(() => {
     if (noProjects) return "Pick or create a project to send";
     if (noCreds) return "Set up Anthropic credentials to start";
@@ -175,23 +82,6 @@ export default function Home() {
 
   return (
     <>
-      <AppSidebar
-        projects={projects}
-        sessions={sessions}
-        sessionErrorByProject={errorByProject}
-        currentProjectId={null}
-        currentSessionId={null}
-        loading={projectsLoading}
-        onSelectProject={handleSelectProject}
-        onSelectSession={handleSelectSession}
-        onCreateProject={handleCreateProject}
-        onNewSession={handleNewSession}
-        onRenameProject={handleRenameProject}
-        onRenameSession={handleRenameSession}
-        onDeleteProject={handleDeleteProject}
-        onDeleteSession={handleDeleteSession}
-      />
-
       <SidebarInset className="flex flex-col">
         <div className="flex-1 flex items-center justify-center">
           <div className="flex flex-col items-center w-full max-w-2xl px-6 gap-8">
@@ -215,11 +105,12 @@ export default function Home() {
                 onValueChange={setDraft}
                 testingMode={testingMode}
                 onTestingModeChange={setTestingMode}
+                focusSignal={newSessionToken}
                 leadingActions={
                   <ProjectSelector
                     projects={projects}
-                    selectedProjectId={selectedProjectId}
-                    onSelect={persistSelectedProject}
+                    selectedProjectId={activeProjectId}
+                    onSelect={setActiveProjectId}
                     onCreateProject={() => setIsCreateProjectOpen(true)}
                     disabled={projectsLoading}
                   />
